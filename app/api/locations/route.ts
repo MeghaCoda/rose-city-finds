@@ -1,9 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { createSupabaseClient } from '@/lib/supabase';
-
-type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-
-const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+import { DAYS } from "@/lib/constants";
+import { DayOfWeek } from '@/types/utils';
 
 export async function GET(_req: NextRequest) {
   const supabase = createSupabaseClient();
@@ -20,7 +18,7 @@ export async function GET(_req: NextRequest) {
   const locations = data.map((loc) => {
     const hours = Object.fromEntries(
       DAYS.map((day) => [day, []])
-    ) as Record<DayOfWeek, { start: string; end: string }[]>;
+    ) as unknown as Record<DayOfWeek, { start: string; end: string }[]>;
 
     for (const h of loc.location_hours ?? []) {
       if (h.opens_at && h.closes_at) {

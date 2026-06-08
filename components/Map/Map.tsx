@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react";
-import LocationMap from "@/components/LocationMap/LocationMap";
+import LocationMap from "@/components/LocationMap";
 import mockData from "@/__mocks__/mockData";
 import type { Location } from "@/schemas/zodSchema";
 import LocationDetails from "../LocationDetails/LocationDetails";

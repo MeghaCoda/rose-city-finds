@@ -41,3 +41,13 @@ The DB exists in supabase. If tables are updated, you can run
 npx supabase gen types typescript --project-id {{ project id goes here }} > types/supabase.ts
 
 To keep local types in sync.
+
+## Supabase Setup
+After running migrations, expose the following tables in 
+Project Settings → API → Data API → Settings:
+- locations
+- location_hours
+- location_eligibility
+- location_benefits
+
+In the future switching to the supabase cli could prevent these sorts of manual notes by storing these changes in a config.toml file

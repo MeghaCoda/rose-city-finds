@@ -7,8 +7,15 @@ import {
 } from "react-leaflet"
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import 'leaflet/dist/leaflet.css';
+import L from "leaflet";
 import type { Location } from "@/schemas/zodSchema";
-import type { LatLngTuple } from "leaflet";
+
+delete (L.Icon.Default.prototype as unknown as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 interface ResourceMapProps {
   onSelect: (a: Location) => void;
@@ -25,10 +32,8 @@ const ResourceMap = ({ onSelect, data }: ResourceMapProps) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MarkerClusterGroup>
-          {data.map(item => {
-            return (
-              <>
-              <Marker position={[item.latitude, item.longitude]}
+          {data.map(item => (
+              <Marker key={item.id} position={[item.latitude, item.longitude]}
               eventHandlers={{
                 click: () => {
                   onSelect(item);
@@ -36,13 +41,11 @@ const ResourceMap = ({ onSelect, data }: ResourceMapProps) => {
               }}>
                 <Popup>
                   <h3>{item.name}</h3>
-              <p>{item.address}</p>
-              {item.address2 && <p>{item.address2}</p>}
-          </Popup>
+                  <p>{item.address}</p>
+                  {item.address2 && <p>{item.address2}</p>}
+                </Popup>
               </Marker>
-              </>
-            )
-          })}
+          ))}
         </MarkerClusterGroup>
       </MapContainer>
       </div>
