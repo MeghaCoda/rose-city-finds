@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { Providers } from './providers';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col h-full">
         <h2 className="text-2xl font-semibold mb-4">Food Map</h2>
         <div className="flex-1 flex flex-col min-h-0">
+        <Providers>
           {children}
+          </Providers>
         </div></body>
     </html>
   );
