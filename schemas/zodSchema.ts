@@ -19,23 +19,24 @@ const LocationSchema = z.object({
   longitude: z.number(),
   offerDesc: z.string(),
   offerSource: z.string(),
-  website: z.url().optional(),
-  donationLink: z.url().optional(),
+  website: z.url().optional().or(z.literal("")),
+  donationLink: z.url().optional().or(z.literal("")),
   deliveryAvailable: z.boolean(),
-  volunteerLink: z.url().optional(),
-  phoneNumber: z.number().or(z.literal("")),
-  hours: {
+  volunteerLink: z.url().optional().or(z.literal("")),
+  phoneNumber: z.string().optional(),
+  hours: z.object({
     monday: hoursSchema,
     tuesday: hoursSchema,
     wednesday: hoursSchema,
     thursday: hoursSchema,
     friday: hoursSchema,
     saturday: hoursSchema,
-    sunday: hoursSchema
-  },
+    sunday: hoursSchema,
+  }),
   infoLastVerified: z.string(),
   lastUpdated: z.string(),
   notes: z.string().optional()
 });
 
+export { LocationSchema };
 export type Location = z.infer<typeof LocationSchema>;

@@ -56,7 +56,7 @@ const mockData: Location[] = [
             saturday: [{ start: '09:30', end: '14:00'}],
             sunday: [{ start: '09:30', end: '14:00'}],
          },
-         phoneNumber: 5555555555,
+         phoneNumber: '5555555555',
          volunteerLink: 'https://hereticcoffee.com/pages/volunteer',
         infoLastVerified: 'Nov 4, 2025',
         lastUpdated: 'Nov 4, 2025',
@@ -86,7 +86,7 @@ const mockData: Location[] = [
                 saturday: [{start: '00:00', end: '00:01'}],
                 sunday: [{start: '00:00', end: '00:01'}],
              },
-            phoneNumber: 9712183175,
+            phoneNumber: '9712183175',
             infoLastVerified: 'Nov 4, 2025',
             lastUpdated: 'Nov 4, 2025',
             notes: ''
