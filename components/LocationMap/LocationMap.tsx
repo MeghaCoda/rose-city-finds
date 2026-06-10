@@ -25,7 +25,7 @@ interface ResourceMapProps {
 const ResourceMap = ({ onSelect, data }: ResourceMapProps) => {
 
     return (
-        <div style={{height: '50vh', width: '50vw', minWidth: '50vw'}}>
+      <div className="h-full w-full min-w-0">
         <MapContainer center={[45.523, -122.6765]} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
