@@ -1,13 +1,18 @@
-import { createSupabaseClient } from '@/lib/supabase';
 import { DAYS } from '@/lib/constants';
 import { DayOfWeek } from '@/types/utils';
 import type { Database } from '@/types/supabase';
 import { LocationSchema } from '@/schemas/zodSchema';
 import type { Location, LocationInput, LocationUpdate } from '@/schemas/zodSchema';
-
-type LocationRow = Database['public']['Tables']['locations']['Row'] & {
-  location_hours: Database['public']['Tables']['location_hours']['Row'][];
-};
+import type { LocationRow } from './db';
+import {
+  fetchLocationById,
+  fetchActiveLocations,
+  insertLocation,
+  insertLocationHours,
+  updateLocationRow,
+  deleteLocationHours,
+  softDeleteLocation,
+} from './db';
 
 function formatLocation(loc: LocationRow): unknown {
   const hours = Object.fromEntries(
@@ -85,16 +90,8 @@ function hoursToRows(locationId: string, hours: Location['hours']) {
 }
 
 async function getLocationById(id: string): Promise<Location> {
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase
-    .from('locations')
-    .select('*, location_hours(*)')
-    .eq('id', id)
-    .single();
-
-  if (error) throw new Error(error.message);
-
-  const result = LocationSchema.safeParse(formatLocation(data as LocationRow));
+  const data = await fetchLocationById(id);
+  const result = LocationSchema.safeParse(formatLocation(data));
   if (!result.success) {
     throw new Error(`Invalid location data: ${JSON.stringify(result.error.flatten())}`);
   }
@@ -102,18 +99,8 @@ async function getLocationById(id: string): Promise<Location> {
 }
 
 export async function getLocations(): Promise<Location[]> {
-  const supabase = createSupabaseClient();
-
-  const { data, error } = await supabase
-    .from('locations')
-    .select('*, location_hours(*)')
-    .eq('is_active', true);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data.reduce<Location[]>((acc, loc) => {
+  const rows = await fetchActiveLocations();
+  return rows.reduce<Location[]>((acc, loc) => {
     const result = LocationSchema.safeParse(formatLocation(loc));
     if (result.success) {
       acc.push(result.data);
@@ -125,21 +112,12 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 export async function createLocation(data: LocationInput): Promise<Location> {
-  const supabase = createSupabaseClient();
-
-  const { data: loc, error } = await supabase
-    .from('locations')
-    .insert(locationInputToRow(data) as Database['public']['Tables']['locations']['Insert'])
-    .select('id')
-    .single();
-
-  if (error) throw new Error(error.message);
+  const loc = await insertLocation(locationInputToRow(data) as Database['public']['Tables']['locations']['Insert']);
 
   if (data.hours) {
     const hoursRows = hoursToRows(loc.id, data.hours);
     if (hoursRows.length > 0) {
-      const { error: hoursError } = await supabase.from('location_hours').insert(hoursRows);
-      if (hoursError) throw new Error(hoursError.message);
+      await insertLocationHours(hoursRows);
     }
   }
 
@@ -147,26 +125,13 @@ export async function createLocation(data: LocationInput): Promise<Location> {
 }
 
 export async function updateLocation(id: string, data: LocationUpdate): Promise<Location> {
-  const supabase = createSupabaseClient();
-
-  const { error } = await supabase
-    .from('locations')
-    .update(locationInputToRow(data))
-    .eq('id', id);
-
-  if (error) throw new Error(error.message);
+  await updateLocationRow(id, locationInputToRow(data));
 
   if (data.hours) {
-    const { error: deleteError } = await supabase
-      .from('location_hours')
-      .delete()
-      .eq('location_id', id);
-    if (deleteError) throw new Error(deleteError.message);
-
+    await deleteLocationHours(id);
     const hoursRows = hoursToRows(id, data.hours);
     if (hoursRows.length > 0) {
-      const { error: insertError } = await supabase.from('location_hours').insert(hoursRows);
-      if (insertError) throw new Error(insertError.message);
+      await insertLocationHours(hoursRows);
     }
   }
 
@@ -174,10 +139,5 @@ export async function updateLocation(id: string, data: LocationUpdate): Promise<
 }
 
 export async function deleteLocation(id: string): Promise<void> {
-  const supabase = createSupabaseClient();
-  const { error } = await supabase
-    .from('locations')
-    .update({ is_active: false })
-    .eq('id', id);
-  if (error) throw new Error(error.message);
+  await softDeleteLocation(id);
 }

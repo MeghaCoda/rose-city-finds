@@ -1,0 +1,60 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import Map from '@/components/Map/Map'
+import { mockLocation } from '@/__mocks__/mockData'
+
+// Mock LocationMap so tests don't require Leaflet (a DOM canvas library).
+// The mock exposes a button that calls onSelect with the mock location.
+vi.mock('@/components/LocationMap', async () => {
+  const { mockLocation } = await import('@/__mocks__/mockData')
+  return {
+    default: ({ onSelect }: { onSelect: (loc: unknown) => void }) => (
+      <button data-testid="map-select-btn" onClick={() => onSelect(mockLocation)}>
+        Select Location
+      </button>
+    ),
+  }
+})
+
+// Mock useQuery to avoid needing a QueryClientProvider and real fetch calls.
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  const { mockLocation } = await import('@/__mocks__/mockData')
+  return {
+    ...actual,
+    useQuery: vi.fn().mockReturnValue({ data: [mockLocation], isLoading: false }),
+  }
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('Map', () => {
+  it('renders the search bar', () => {
+    render(<Map />)
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+  })
+
+  it('renders the map component', () => {
+    render(<Map />)
+    expect(screen.getByTestId('map-select-btn')).toBeInTheDocument()
+  })
+
+  it('does not show LocationDetails before a location is selected', () => {
+    render(<Map />)
+    expect(screen.queryByRole('heading', { name: mockLocation.name })).not.toBeInTheDocument()
+  })
+
+  it('shows LocationDetails after selecting a location', () => {
+    render(<Map />)
+    fireEvent.click(screen.getByTestId('map-select-btn'))
+    expect(screen.getByRole('heading', { name: mockLocation.name })).toBeInTheDocument()
+  })
+
+  it('shows the selected location address', () => {
+    render(<Map />)
+    fireEvent.click(screen.getByTestId('map-select-btn'))
+    expect(screen.getByText('123 Main St')).toBeInTheDocument()
+  })
+})
