@@ -26,6 +26,7 @@ function FieldLegend({
   ...props
 }: React.ComponentProps<"legend"> & { variant?: "legend" | "label" }) {
   return (
+
     <legend
       data-slot="field-legend"
       data-variant={variant}
