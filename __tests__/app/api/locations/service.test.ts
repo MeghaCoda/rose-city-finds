@@ -47,8 +47,8 @@ describe('getLocations', () => {
   })
 
   it('filters out rows that fail schema validation', async () => {
-    const invalidRow = { ...mockDbRow, name: null } // name is required
-    vi.mocked(fetchActiveLocations).mockResolvedValue([invalidRow, mockDbRow])
+    const invalidRow = { ...mockDbRow, name: null }
+    vi.mocked(fetchActiveLocations).mockResolvedValue([invalidRow, mockDbRow] as never)
 
     const result = await getLocations()
 

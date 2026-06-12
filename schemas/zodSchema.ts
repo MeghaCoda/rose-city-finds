@@ -35,13 +35,34 @@ const LocationSchema = z.object({
   }),
   infoLastVerified: z.string(),
   lastUpdated: z.string(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  verificationStatus: z.enum(['pending', 'confirmed', 'needs-review', 'unverifiable']),
+  ownerClaimed: z.boolean().nullable().optional(),
+  ownerVerifiedAt: z.string().nullable().optional(),
 });
 
 const LocationInputSchema = LocationSchema.omit({ id: true, lastUpdated: true });
 const LocationUpdateSchema = LocationInputSchema.partial();
 
-export { LocationSchema, LocationInputSchema, LocationUpdateSchema };
+const VerificationEventSchema = z.object({
+  id: z.string(),
+  locationId: z.string(),
+  verifiedAt: z.string(),
+  verifiedBy: z.string().nullable().optional(),
+  method: z.enum(['phone', 'website', 'email', 'in-person', 'owner-portal']).nullable().optional(),
+  outcome: z.enum(['confirmed', 'no-answer', 'info-updated', 'closed', 'unverifiable']).nullable().optional(),
+  notes: z.string().nullable().optional(),
+  isOwner: z.boolean().nullable().optional(),
+});
+
+const VerificationEventInputSchema = VerificationEventSchema.omit({ id: true }).extend({
+  verifiedAt: z.string().default(() => new Date().toISOString()),
+});const VerificationEventUpdateSchema = VerificationEventInputSchema.partial();
+
+export { LocationSchema, LocationInputSchema, LocationUpdateSchema, VerificationEventSchema, VerificationEventInputSchema, VerificationEventUpdateSchema };
 export type Location = z.infer<typeof LocationSchema>;
 export type LocationInput = z.infer<typeof LocationInputSchema>;
 export type LocationUpdate = z.infer<typeof LocationUpdateSchema>;
+export type VerificationEvent = z.infer<typeof VerificationEventSchema>;
+export type VerificationEventInput = z.infer<typeof VerificationEventInputSchema>;
+export type VerificationEventUpdate = z.infer<typeof VerificationEventUpdateSchema>;
