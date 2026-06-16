@@ -318,18 +318,19 @@ export type Database = {
           id: string
           info_last_verified: string | null
           is_active: boolean
-          is_verified: boolean
           latitude: number | null
           longitude: number | null
           name: string
           neighborhood: string | null
           offer_desc: string | null
           offer_source: string | null
+          owner_claimed: boolean | null
+          owner_verified_at: string | null
           phone: string | null
           state: string
           updated_at: string
+          verification_status: string
           verified_at: string | null
-          verified_by: string | null
           volunteer_link: string | null
           website: string | null
           zip: string | null
@@ -347,18 +348,19 @@ export type Database = {
           id?: string
           info_last_verified?: string | null
           is_active?: boolean
-          is_verified?: boolean
           latitude?: number | null
           longitude?: number | null
           name: string
           neighborhood?: string | null
           offer_desc?: string | null
           offer_source?: string | null
+          owner_claimed?: boolean | null
+          owner_verified_at?: string | null
           phone?: string | null
           state?: string
           updated_at?: string
+          verification_status?: string
           verified_at?: string | null
-          verified_by?: string | null
           volunteer_link?: string | null
           website?: string | null
           zip?: string | null
@@ -376,18 +378,19 @@ export type Database = {
           id?: string
           info_last_verified?: string | null
           is_active?: boolean
-          is_verified?: boolean
           latitude?: number | null
           longitude?: number | null
           name?: string
           neighborhood?: string | null
           offer_desc?: string | null
           offer_source?: string | null
+          owner_claimed?: boolean | null
+          owner_verified_at?: string | null
           phone?: string | null
           state?: string
           updated_at?: string
+          verification_status?: string
           verified_at?: string | null
-          verified_by?: string | null
           volunteer_link?: string | null
           website?: string | null
           zip?: string | null
@@ -397,13 +400,6 @@ export type Database = {
           {
             foreignKeyName: "locations_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "locations_verified_by_fkey"
-            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

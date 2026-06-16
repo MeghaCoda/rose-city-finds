@@ -81,6 +81,7 @@ describe('POST /api/locations', () => {
       sunday: [],
     },
     infoLastVerified: '2025-01-01',
+    verificationStatus: 'pending',
   }
 
   it('returns 201 with created location on valid input', async () => {

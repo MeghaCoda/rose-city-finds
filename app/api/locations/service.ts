@@ -49,6 +49,9 @@ function formatLocation(loc: LocationRow): unknown {
     infoLastVerified: loc.info_last_verified ?? '',
     lastUpdated: loc.updated_at,
     notes: loc.description ?? '',
+    verificationStatus: loc.verification_status as Location['verificationStatus'],
+    ownerClaimed: loc.owner_claimed ?? null,
+    ownerVerifiedAt: loc.owner_verified_at ?? null,
   };
 }
 
@@ -71,6 +74,9 @@ function locationInputToRow(data: LocationInput | LocationUpdate) {
     ...(data.phoneNumber !== undefined && { phone: data.phoneNumber ?? null }),
     ...(data.infoLastVerified !== undefined && { info_last_verified: data.infoLastVerified }),
     ...(data.notes !== undefined && { description: data.notes ?? null }),
+    ...(data.verificationStatus !== undefined && { verification_status: data.verificationStatus }),
+    ...(data.ownerClaimed !== undefined && { owner_claimed: data.ownerClaimed ?? null }),
+    ...(data.ownerVerifiedAt !== undefined && { owner_verified_at: data.ownerVerifiedAt ?? null }),
   };
 }
 

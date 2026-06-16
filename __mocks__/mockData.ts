@@ -23,12 +23,21 @@ export const mockDbRow = {
   updated_at: '2025-01-01',
   description: null,
   is_active: true,
+  created_at: '2025-01-01',
+  created_by: null,
+  neighborhood: null,
+  verified_at: null,
+  verification_status: 'pending',
+  owner_claimed: null,
+  owner_verified_at: null,
   location_hours: [
     {
+      id: 'hours-uuid-123',
       location_id: 'test-uuid-123',
-      day: 'monday',
+      day: 'monday' as const,
       opens_at: '08:00:00',
       closes_at: '17:00:00',
+      notes: null,
     },
   ],
 };
@@ -59,4 +68,5 @@ export const mockLocation: Location = {
   hours: mockHours,
   infoLastVerified: '2025-01-01',
   lastUpdated: '2025-01-01',
+  verificationStatus: 'pending',
 };
