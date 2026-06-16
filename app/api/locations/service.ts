@@ -1,149 +1,126 @@
-import { DAYS } from '@/lib/constants';
-import { DayOfWeek } from '@/types/utils';
-import type { Database } from '@/types/supabase';
-import { LocationSchema } from '@/schemas/zodSchema';
-import type { Location, LocationInput, LocationUpdate } from '@/schemas/zodSchema';
-import type { LocationRow } from './db';
+import { PhysicalLocationsSchema } from '@/schemas/zodSchema';
+import type { PhysicalLocation, ResourceHours } from '@/schemas/zodSchema';
+import type { PhysicalLocationRow } from './db';
+import type { PhysicalLocationInput, PhysicalLocationUpdate } from './schemas';
 import {
-  fetchLocationById,
-  fetchActiveLocations,
-  insertLocation,
-  insertLocationHours,
-  updateLocationRow,
-  deleteLocationHours,
-  softDeleteLocation,
+  fetchPhysicalLocationById,
+  fetchPhysicalLocations,
+  insertPhysicalLocation,
+  insertResourceHours,
+  updatePhysicalLocationRow,
+  deleteResourceHours,
+  deletePhysicalLocation,
 } from './db';
 
-function formatLocation(loc: LocationRow): unknown {
-  const hours = Object.fromEntries(
-    DAYS.map((day) => [day, []])
-  ) as unknown as Record<DayOfWeek, { start: string; end: string }[]>;
+export type PhysicalLocationWithHours = PhysicalLocation & {
+  resource_hours: Array<Omit<ResourceHours, 'physical_location_id'>>;
+};
 
-  for (const h of loc.location_hours ?? []) {
-    if (h.opens_at && h.closes_at) {
-      hours[h.day as DayOfWeek].push({
-        start: h.opens_at.slice(0, 5),
-        end: h.closes_at.slice(0, 5),
-      });
-    }
-  }
-
+function formatLocation(row: PhysicalLocationRow): unknown {
   return {
-    id: loc.id,
-    name: loc.name,
-    address: loc.address,
-    address2: loc.address2 ?? '',
-    city: loc.city,
-    state: loc.state,
-    zipCode: loc.zip_code ?? loc.zip ?? '',
-    latitude: loc.latitude ?? 0,
-    longitude: loc.longitude ?? 0,
-    offerDesc: loc.offer_desc ?? '',
-    offerSource: loc.offer_source ?? '',
-    website: loc.website ?? undefined,
-    donationLink: loc.donation_link ?? undefined,
-    deliveryAvailable: loc.delivery_available ?? false,
-    volunteerLink: loc.volunteer_link ?? undefined,
-    phoneNumber: loc.phone ?? '',
-    hours,
-    infoLastVerified: loc.info_last_verified ?? '',
-    lastUpdated: loc.updated_at,
-    notes: loc.description ?? '',
-    verificationStatus: loc.verification_status as Location['verificationStatus'],
-    ownerClaimed: loc.owner_claimed ?? null,
-    ownerVerifiedAt: loc.owner_verified_at ?? null,
+    id: row.id,
+    resource_id: row.resource_id,
+    address: row.address,
+    address2: row.address2,
+    city: row.city,
+    state: row.state,
+    zip_code: row.zip_code,
+    neighborhood: row.neighborhood,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    phone_number: row.phone_number,
+    verification_status: row.verification_status,
+    created_at: row.created_at,
+    resource_hours: (row.resource_hours ?? []).map((h) => ({
+      id: h.id,
+      day: h.day,
+      opens_at: h.opens_at,
+      closes_at: h.closes_at,
+      notes: h.notes,
+      valid_from: h.valid_from,
+      valid_until: h.valid_until,
+    })),
   };
 }
 
-function locationInputToRow(data: LocationInput | LocationUpdate) {
+function inputToRow(data: Partial<PhysicalLocationInput>) {
   return {
-    ...(data.name !== undefined && { name: data.name }),
+    ...(data.resource_id !== undefined && { resource_id: data.resource_id }),
     ...(data.address !== undefined && { address: data.address }),
     ...(data.address2 !== undefined && { address2: data.address2 ?? null }),
     ...(data.city !== undefined && { city: data.city }),
     ...(data.state !== undefined && { state: data.state }),
-    ...(data.zipCode !== undefined && { zip_code: data.zipCode }),
-    ...(data.latitude !== undefined && { latitude: data.latitude }),
-    ...(data.longitude !== undefined && { longitude: data.longitude }),
-    ...(data.offerDesc !== undefined && { offer_desc: data.offerDesc }),
-    ...(data.offerSource !== undefined && { offer_source: data.offerSource }),
-    ...(data.website !== undefined && { website: data.website ?? null }),
-    ...(data.donationLink !== undefined && { donation_link: data.donationLink ?? null }),
-    ...(data.deliveryAvailable !== undefined && { delivery_available: data.deliveryAvailable }),
-    ...(data.volunteerLink !== undefined && { volunteer_link: data.volunteerLink ?? null }),
-    ...(data.phoneNumber !== undefined && { phone: data.phoneNumber ?? null }),
-    ...(data.infoLastVerified !== undefined && { info_last_verified: data.infoLastVerified }),
-    ...(data.notes !== undefined && { description: data.notes ?? null }),
-    ...(data.verificationStatus !== undefined && { verification_status: data.verificationStatus }),
-    ...(data.ownerClaimed !== undefined && { owner_claimed: data.ownerClaimed ?? null }),
-    ...(data.ownerVerifiedAt !== undefined && { owner_verified_at: data.ownerVerifiedAt ?? null }),
+    ...(data.zip_code !== undefined && { zip_code: data.zip_code }),
+    ...(data.neighborhood !== undefined && { neighborhood: data.neighborhood ?? null }),
+    ...(data.latitude !== undefined && { latitude: data.latitude ?? null }),
+    ...(data.longitude !== undefined && { longitude: data.longitude ?? null }),
+    ...(data.phone_number !== undefined && { phone_number: data.phone_number ?? null }),
+    ...(data.verification_status !== undefined && {
+      verification_status: data.verification_status ?? null,
+    }),
   };
 }
 
-function hoursToRows(locationId: string, hours: Location['hours']) {
-  const rows: Database['public']['Tables']['location_hours']['Insert'][] = [];
-  for (const [day, slots] of Object.entries(hours)) {
-    for (const slot of slots) {
-      rows.push({
-        location_id: locationId,
-        day: day as DayOfWeek,
-        opens_at: `${slot.start}:00`,
-        closes_at: `${slot.end}:00`,
-      });
-    }
-  }
-  return rows;
-}
-
-async function getLocationById(id: string): Promise<Location> {
-  const data = await fetchLocationById(id);
-  const result = LocationSchema.safeParse(formatLocation(data));
+async function getById(id: string): Promise<PhysicalLocationWithHours> {
+  const row = await fetchPhysicalLocationById(id);
+  const formatted = formatLocation(row);
+  const result = PhysicalLocationsSchema.safeParse(formatted);
   if (!result.success) {
     throw new Error(`Invalid location data: ${JSON.stringify(result.error.flatten())}`);
   }
-  return result.data;
+  return formatted as PhysicalLocationWithHours;
 }
 
-export async function getLocations(): Promise<Location[]> {
-  const rows = await fetchActiveLocations();
-  return rows.reduce<Location[]>((acc, loc) => {
-    const result = LocationSchema.safeParse(formatLocation(loc));
+export async function getLocations(): Promise<PhysicalLocationWithHours[]> {
+  const rows = await fetchPhysicalLocations();
+  return rows.reduce<PhysicalLocationWithHours[]>((acc, row) => {
+    const formatted = formatLocation(row);
+    const result = PhysicalLocationsSchema.safeParse(formatted);
     if (result.success) {
-      acc.push(result.data);
+      acc.push(formatted as PhysicalLocationWithHours);
     } else {
-      console.error(`Invalid location ${loc.id}:`, result.error.flatten());
+      console.error(`Invalid location ${row.id}:`, result.error.flatten());
     }
     return acc;
   }, []);
 }
 
-export async function createLocation(data: LocationInput): Promise<Location> {
-  const loc = await insertLocation(locationInputToRow(data) as Database['public']['Tables']['locations']['Insert']);
+export async function createLocation(
+  data: PhysicalLocationInput
+): Promise<PhysicalLocationWithHours> {
+  const { resource_hours, ...locationData } = data;
+  const loc = await insertPhysicalLocation(
+    inputToRow(locationData) as Parameters<typeof insertPhysicalLocation>[0]
+  );
 
-  if (data.hours) {
-    const hoursRows = hoursToRows(loc.id, data.hours);
-    if (hoursRows.length > 0) {
-      await insertLocationHours(hoursRows);
-    }
+  if (resource_hours && resource_hours.length > 0) {
+    await insertResourceHours(
+      resource_hours.map((h) => ({ ...h, physical_location_id: loc.id }))
+    );
   }
 
-  return getLocationById(loc.id);
+  return getById(loc.id);
 }
 
-export async function updateLocation(id: string, data: LocationUpdate): Promise<Location> {
-  await updateLocationRow(id, locationInputToRow(data));
+export async function updateLocation(
+  id: string,
+  data: PhysicalLocationUpdate
+): Promise<PhysicalLocationWithHours> {
+  const { resource_hours, ...locationData } = data;
+  await updatePhysicalLocationRow(id, inputToRow(locationData));
 
-  if (data.hours) {
-    await deleteLocationHours(id);
-    const hoursRows = hoursToRows(id, data.hours);
-    if (hoursRows.length > 0) {
-      await insertLocationHours(hoursRows);
+  if (resource_hours !== undefined) {
+    await deleteResourceHours(id);
+    if (resource_hours.length > 0) {
+      await insertResourceHours(
+        resource_hours.map((h) => ({ ...h, physical_location_id: id }))
+      );
     }
   }
 
-  return getLocationById(id);
+  return getById(id);
 }
 
 export async function deleteLocation(id: string): Promise<void> {
-  await softDeleteLocation(id);
+  await deletePhysicalLocation(id);
 }

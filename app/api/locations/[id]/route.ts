@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { updateLocation, deleteLocation } from '../service';
-import { LocationUpdateSchema } from '@/schemas/zodSchema';
+import { PhysicalLocationUpdateSchema } from '../schemas';
 
 export async function PUT(
   req: NextRequest,
@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const parsed = LocationUpdateSchema.safeParse(body);
+    const parsed = PhysicalLocationUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     }

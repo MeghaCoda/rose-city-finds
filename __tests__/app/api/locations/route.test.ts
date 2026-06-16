@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/locations/route'
-import { mockLocation } from '@/__mocks__/mockData'
+import { mockLocation, MOCK_RESOURCE_ID, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
 
 vi.mock('@/app/api/locations/service', () => ({
   getLocations: vi.fn(),
@@ -24,7 +24,7 @@ describe('GET /api/locations', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body).toHaveLength(1)
-    expect(body[0].id).toBe('test-uuid-123')
+    expect(body[0].id).toBe(MOCK_LOCATION_ID)
   })
 
   it('returns 200 with empty array when no locations exist', async () => {
@@ -61,31 +61,19 @@ describe('GET /api/locations', () => {
 
 describe('POST /api/locations', () => {
   const validInput = {
-    name: 'New Location',
+    resource_id: MOCK_RESOURCE_ID,
     address: '456 Oak Ave',
     city: 'Portland',
     state: 'OR',
-    zipCode: '97202',
+    zip_code: '97202',
     latitude: 45.5,
     longitude: -122.7,
-    offerDesc: 'Community meals',
-    offerSource: 'https://example.com',
-    deliveryAvailable: true,
-    hours: {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: [],
-    },
-    infoLastVerified: '2025-01-01',
-    verificationStatus: 'pending',
+    phone_number: '503-555-9999',
+    verification_status: 'pending',
   }
 
   it('returns 201 with created location on valid input', async () => {
-    vi.mocked(createLocation).mockResolvedValue({ ...mockLocation, name: 'New Location' })
+    vi.mocked(createLocation).mockResolvedValue({ ...mockLocation, address: '456 Oak Ave' })
 
     const req = new NextRequest('http://localhost/api/locations', {
       method: 'POST',
@@ -96,13 +84,13 @@ describe('POST /api/locations', () => {
 
     expect(response.status).toBe(201)
     const body = await response.json()
-    expect(body.name).toBe('New Location')
+    expect(body.address).toBe('456 Oak Ave')
   })
 
   it('returns 400 when required fields are missing', async () => {
     const req = new NextRequest('http://localhost/api/locations', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Incomplete' }),
+      body: JSON.stringify({ address: 'Incomplete' }),
       headers: { 'Content-Type': 'application/json' },
     })
     const response = await POST(req)

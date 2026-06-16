@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getLocations, deleteLocation } from '@/app/api/locations/service'
-import { mockDbRow } from '@/__mocks__/mockData'
+import { mockDbRow, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
 
 vi.mock('@/app/api/locations/db', () => ({
-  fetchActiveLocations: vi.fn(),
-  fetchLocationById: vi.fn(),
-  insertLocation: vi.fn(),
-  insertLocationHours: vi.fn(),
-  updateLocationRow: vi.fn(),
-  deleteLocationHours: vi.fn(),
-  softDeleteLocation: vi.fn(),
+  fetchPhysicalLocations: vi.fn(),
+  fetchPhysicalLocationById: vi.fn(),
+  insertPhysicalLocation: vi.fn(),
+  insertResourceHours: vi.fn(),
+  updatePhysicalLocationRow: vi.fn(),
+  deleteResourceHours: vi.fn(),
+  deletePhysicalLocation: vi.fn(),
 }))
 
 import {
-  fetchActiveLocations,
-  softDeleteLocation,
+  fetchPhysicalLocations,
+  deletePhysicalLocation,
 } from '@/app/api/locations/db'
 
 beforeEach(() => {
@@ -23,59 +23,59 @@ beforeEach(() => {
 
 describe('getLocations', () => {
   it('returns formatted locations on success', async () => {
-    vi.mocked(fetchActiveLocations).mockResolvedValue([mockDbRow])
+    vi.mocked(fetchPhysicalLocations).mockResolvedValue([mockDbRow])
 
     const result = await getLocations()
 
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('test-uuid-123')
-    expect(result[0].name).toBe('Test Food Bank')
-    expect(result[0].zipCode).toBe('97201')
-    expect(result[0].hours.monday).toEqual([{ start: '08:00', end: '17:00' }])
+    expect(result[0].id).toBe(MOCK_LOCATION_ID)
+    expect(result[0].address).toBe('123 Main St')
+    expect(result[0].zip_code).toBe('97201')
+    expect(result[0].resource_hours).toHaveLength(1)
+    expect(result[0].resource_hours[0].day).toBe('monday')
+    expect(result[0].resource_hours[0].opens_at).toBe('08:00:00')
   })
 
-  it('maps null optional fields to safe defaults', async () => {
-    vi.mocked(fetchActiveLocations).mockResolvedValue([mockDbRow])
+  it('passes through nullable optional fields as-is', async () => {
+    vi.mocked(fetchPhysicalLocations).mockResolvedValue([mockDbRow])
 
     const [loc] = await getLocations()
 
-    expect(loc.website).toBeUndefined()
-    expect(loc.donationLink).toBeUndefined()
-    expect(loc.deliveryAvailable).toBe(false)
-    expect(loc.address2).toBe('')
-    expect(loc.notes).toBe('')
+    expect(loc.address2).toBeNull()
+    expect(loc.neighborhood).toBeNull()
+    expect(loc.phone_number).toBe('503-555-1234')
+    expect(loc.latitude).toBe(45.523)
   })
 
   it('filters out rows that fail schema validation', async () => {
-    const invalidRow = { ...mockDbRow, name: null }
-    vi.mocked(fetchActiveLocations).mockResolvedValue([invalidRow, mockDbRow] as never)
+    const invalidRow = { ...mockDbRow, address: null }
+    vi.mocked(fetchPhysicalLocations).mockResolvedValue([invalidRow, mockDbRow] as never)
 
     const result = await getLocations()
 
-    // Only the valid row should be returned.
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('test-uuid-123')
+    expect(result[0].id).toBe(MOCK_LOCATION_ID)
   })
 
   it('throws when db returns an error', async () => {
-    vi.mocked(fetchActiveLocations).mockRejectedValue(new Error('DB error'))
+    vi.mocked(fetchPhysicalLocations).mockRejectedValue(new Error('DB error'))
 
     await expect(getLocations()).rejects.toThrow('DB error')
   })
 })
 
 describe('deleteLocation', () => {
-  it('delegates to softDeleteLocation', async () => {
-    vi.mocked(softDeleteLocation).mockResolvedValue(undefined)
+  it('delegates to deletePhysicalLocation', async () => {
+    vi.mocked(deletePhysicalLocation).mockResolvedValue(undefined)
 
-    await deleteLocation('test-uuid-123')
+    await deleteLocation(MOCK_LOCATION_ID)
 
-    expect(softDeleteLocation).toHaveBeenCalledWith('test-uuid-123')
+    expect(deletePhysicalLocation).toHaveBeenCalledWith(MOCK_LOCATION_ID)
   })
 
   it('throws when db returns an error', async () => {
-    vi.mocked(softDeleteLocation).mockRejectedValue(new Error('Delete failed'))
+    vi.mocked(deletePhysicalLocation).mockRejectedValue(new Error('Delete failed'))
 
-    await expect(deleteLocation('bad-id')).rejects.toThrow('Delete failed')
+    await expect(deleteLocation(MOCK_LOCATION_ID)).rejects.toThrow('Delete failed')
   })
 })
