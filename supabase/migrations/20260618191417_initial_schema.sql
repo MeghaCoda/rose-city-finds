@@ -1,10 +1,3 @@
-CREATE TYPE "user_role" AS ENUM (
-  'admin',
-  'owner',
-  'contributor',
-  'viewer'
-);
-
 CREATE TYPE "benefit_category" AS ENUM (
   'free_food',
   'discounted_food',
@@ -44,7 +37,6 @@ CREATE TABLE "users" (
   "id" uuid PRIMARY KEY DEFAULT (gen_random_uuid()),
   "username" text NOT NULL,
   "email" text UNIQUE NOT NULL,
-  "role" user_role NOT NULL,
   "created_at" timestamptz DEFAULT (now())
 );
 
