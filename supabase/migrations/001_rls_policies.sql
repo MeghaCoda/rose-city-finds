@@ -52,7 +52,7 @@ create policy "Logged-in users can submit resources"
   to authenticated
   with check (
     auth.uid() is not null
-    and verification_status is null  -- must not self-approve
+    and verification_status = 'pending'
   );
 
 -- Only admins can update or delete

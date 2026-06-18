@@ -67,7 +67,7 @@ CREATE TABLE "resources" (
   "offer_desc" text,
   "offer_source" text,
   "benefits" benefit_category[],
-  "verification_status" text,
+  "verification_status" submission_status DEFAULT 'pending',
   "expires_at" date,
   "is_active" boolean DEFAULT true,
   "created_by" uuid NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE "physical_locations" (
   "latitude" float,
   "longitude" float,
   "phone_number" text,
-  "verification_status" text,
+  "verification_status" submission_status DEFAULT 'pending',
   "created_at" timestamptz DEFAULT (now())
 );
 
