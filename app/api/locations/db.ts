@@ -23,7 +23,7 @@ export type PhysicalLocationRow = {
   latitude: number | null;
   longitude: number | null;
   phone_number: string | null;
-  verification_status: string | null;
+  verification_status: 'pending' | 'approved' | 'rejected' | null;
   created_at: string | null;
   resource_hours: ResourceHoursRow[];
 };

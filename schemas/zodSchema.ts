@@ -60,7 +60,7 @@ export const ResourcesSchema = z.object({
   offer_desc: z.string().nullable().optional(),
   offer_source: z.string().nullable().optional(),
   benefits: z.array(BenefitCategorySchema).nullable().optional(),
-  verification_status: z.string().nullable().optional(),
+  verification_status: SubmissionStatusSchema.nullable().optional(),
   expires_at: z.string().nullable().optional(), // date string e.g. "2025-12-31"
   is_active: z.boolean().nullable().optional(),
   created_by: z.string().uuid(),
@@ -104,7 +104,7 @@ export const PhysicalLocationsSchema = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   phone_number: z.string().nullable().optional(),
-  verification_status: z.string().nullable().optional(),
+  verification_status: SubmissionStatusSchema.nullable().optional(),
   created_at: z.string().datetime().nullable().optional(),
 });
 

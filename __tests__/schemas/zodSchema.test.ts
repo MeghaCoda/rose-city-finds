@@ -69,9 +69,16 @@ describe('PhysicalLocationsSchema', () => {
       address2: 'Suite 100',
       neighborhood: 'Pearl District',
       phone_number: '503-555-9999',
-      verification_status: 'verified',
+      verification_status: 'approved',
     })
     expect(result.success).toBe(true)
+  })
+
+  it('rejects an invalid verification_status value', () => {
+    expect(PhysicalLocationsSchema.safeParse({
+      ...mockLocation,
+      verification_status: 'verified',
+    }).success).toBe(false)
   })
 })
 
