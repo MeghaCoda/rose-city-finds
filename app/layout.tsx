@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from './providers';
+import { Header } from '@/components/Header/Header';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -32,12 +33,13 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
     >
       <body className="min-h-full flex flex-col h-full">
-        <h2 className="text-2xl font-semibold mb-4">Food Map</h2>
+        <Header />
         <div className="flex-1 flex flex-col min-h-0">
-        <Providers>
-          {children}
+          <Providers>
+            {children}
           </Providers>
-        </div></body>
+        </div>
+      </body>
     </html>
   );
 }
