@@ -46,7 +46,8 @@ export async function fetchPhysicalLocations(): Promise<PhysicalLocationRow[]> {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from('physical_locations')
-    .select('*, resource_hours(*)');
+    .select('*, resource_hours(*)')
+    .eq('verification_status', 'approved');
   if (error) throw new Error(error.message);
   return data as PhysicalLocationRow[];
 }
