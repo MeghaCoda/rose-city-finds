@@ -1,7 +1,6 @@
 -- ============================================================
 -- 002_auth_trigger.sql
 -- Syncs new Supabase auth users into public.users
--- New users get role 'viewer' by default
 -- ============================================================
 
 create or replace function public.handle_new_user()
@@ -10,12 +9,11 @@ language plpgsql
 security definer
 as $$
 begin
-  insert into public.users (id, email, username, role)
+  insert into public.users (id, email, username)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-    'viewer'
+    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1))
   );
   return new;
 end;

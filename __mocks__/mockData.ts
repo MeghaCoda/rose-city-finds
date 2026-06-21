@@ -1,72 +1,60 @@
-import type { Location } from "@/schemas/zodSchema";
+import type { PhysicalLocationWithHours } from "@/app/api/locations/service";
 
-// A mock row shaped like what Supabase returns from the locations + location_hours join.
+export const MOCK_LOCATION_ID = '11111111-1111-1111-8111-111111111111';
+export const MOCK_RESOURCE_ID = '22222222-2222-2222-8222-222222222222';
+export const MOCK_HOURS_ID = '33333333-3333-3333-8333-333333333333';
+
 export const mockDbRow = {
-  id: 'test-uuid-123',
-  name: 'Test Food Bank',
+  id: MOCK_LOCATION_ID,
+  resource_id: MOCK_RESOURCE_ID,
   address: '123 Main St',
   address2: null,
   city: 'Portland',
   state: 'OR',
   zip_code: '97201',
-  zip: null,
+  neighborhood: null,
   latitude: 45.523,
   longitude: -122.6765,
-  offer_desc: 'Free meals',
-  offer_source: 'https://example.com',
-  website: null,
-  donation_link: null,
-  delivery_available: false,
-  volunteer_link: null,
-  phone: '503-555-1234',
-  info_last_verified: '2025-01-01',
-  updated_at: '2025-01-01',
-  description: null,
-  is_active: true,
-  created_at: '2025-01-01',
-  created_by: null,
-  neighborhood: null,
-  verified_at: null,
+  phone_number: '503-555-1234',
   verification_status: 'pending',
-  owner_claimed: null,
-  owner_verified_at: null,
-  location_hours: [
+  created_at: '2025-01-01T00:00:00Z',
+  resource_hours: [
     {
-      id: 'hours-uuid-123',
-      location_id: 'test-uuid-123',
-      day: 'monday' as const,
+      id: MOCK_HOURS_ID,
+      physical_location_id: MOCK_LOCATION_ID,
+      day: 'monday',
       opens_at: '08:00:00',
       closes_at: '17:00:00',
       notes: null,
+      valid_from: null,
+      valid_until: null,
     },
   ],
 };
 
-export const mockHours: Location['hours'] = {
-  monday: [{ start: '08:00', end: '17:00' }],
-  tuesday: [],
-  wednesday: [],
-  thursday: [],
-  friday: [],
-  saturday: [],
-  sunday: [],
-};
-
-export const mockLocation: Location = {
-  id: 'test-uuid-123',
-  name: 'Test Food Bank',
+export const mockLocation: PhysicalLocationWithHours = {
+  id: MOCK_LOCATION_ID,
+  resource_id: MOCK_RESOURCE_ID,
   address: '123 Main St',
+  address2: null,
   city: 'Portland',
   state: 'OR',
-  zipCode: '97201',
+  zip_code: '97201',
+  neighborhood: null,
   latitude: 45.523,
   longitude: -122.6765,
-  offerDesc: 'Free meals for families',
-  offerSource: 'https://example.com',
-  deliveryAvailable: false,
-  phoneNumber: '503-555-1234',
-  hours: mockHours,
-  infoLastVerified: '2025-01-01',
-  lastUpdated: '2025-01-01',
-  verificationStatus: 'pending',
+  phone_number: '503-555-1234',
+  verification_status: 'pending',
+  created_at: '2025-01-01T00:00:00Z',
+  resource_hours: [
+    {
+      id: MOCK_HOURS_ID,
+      day: 'monday',
+      opens_at: '08:00:00',
+      closes_at: '17:00:00',
+      notes: null,
+      valid_from: null,
+      valid_until: null,
+    },
+  ],
 };

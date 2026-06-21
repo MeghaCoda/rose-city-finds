@@ -1,38 +1,61 @@
 import { createSupabaseClient } from '@/lib/supabase';
-import type { Database } from '@/types/supabase';
 
-export type LocationRow = Database['public']['Tables']['locations']['Row'] & {
-  location_hours: Database['public']['Tables']['location_hours']['Row'][];
+export type ResourceHoursRow = {
+  id: string;
+  physical_location_id: string;
+  day: string;
+  opens_at: string;
+  closes_at: string;
+  notes: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
 };
 
-type LocationInsertRow = Database['public']['Tables']['locations']['Insert'];
-type HoursInsertRow = Database['public']['Tables']['location_hours']['Insert'];
+export type PhysicalLocationRow = {
+  id: string;
+  resource_id: string;
+  address: string;
+  address2: string | null;
+  city: string;
+  state: string;
+  zip_code: string;
+  neighborhood: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone_number: string | null;
+  verification_status: 'pending' | 'approved' | 'rejected' | null;
+  created_at: string | null;
+  resource_hours: ResourceHoursRow[];
+};
 
-export async function fetchLocationById(id: string): Promise<LocationRow> {
+type PhysicalLocationInsert = Omit<PhysicalLocationRow, 'id' | 'created_at' | 'resource_hours'>;
+type ResourceHoursInsert = Omit<ResourceHoursRow, 'id'>;
+
+export async function fetchPhysicalLocationById(id: string): Promise<PhysicalLocationRow> {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
-    .from('locations')
-    .select('*, location_hours(*)')
+    .from('physical_locations')
+    .select('*, resource_hours(*)')
     .eq('id', id)
     .single();
   if (error) throw new Error(error.message);
-  return data as LocationRow;
+  return data as PhysicalLocationRow;
 }
 
-export async function fetchActiveLocations(): Promise<LocationRow[]> {
+export async function fetchPhysicalLocations(): Promise<PhysicalLocationRow[]> {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
-    .from('locations')
-    .select('*, location_hours(*)')
-    .eq('is_active', true);
+    .from('physical_locations')
+    .select('*, resource_hours(*)')
+    .eq('verification_status', 'approved');
   if (error) throw new Error(error.message);
-  return data as LocationRow[];
+  return data as PhysicalLocationRow[];
 }
 
-export async function insertLocation(row: LocationInsertRow): Promise<{ id: string }> {
+export async function insertPhysicalLocation(row: PhysicalLocationInsert): Promise<{ id: string }> {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
-    .from('locations')
+    .from('physical_locations')
     .insert(row)
     .select('id')
     .single();
@@ -40,35 +63,38 @@ export async function insertLocation(row: LocationInsertRow): Promise<{ id: stri
   return data as { id: string };
 }
 
-export async function insertLocationHours(rows: HoursInsertRow[]): Promise<void> {
+export async function insertResourceHours(rows: ResourceHoursInsert[]): Promise<void> {
   const supabase = createSupabaseClient();
-  const { error } = await supabase.from('location_hours').insert(rows);
+  const { error } = await supabase.from('resource_hours').insert(rows);
   if (error) throw new Error(error.message);
 }
 
-export async function updateLocationRow(id: string, row: Partial<LocationInsertRow>): Promise<void> {
+export async function updatePhysicalLocationRow(
+  id: string,
+  row: Partial<PhysicalLocationInsert>
+): Promise<void> {
   const supabase = createSupabaseClient();
   const { error } = await supabase
-    .from('locations')
+    .from('physical_locations')
     .update(row)
     .eq('id', id);
   if (error) throw new Error(error.message);
 }
 
-export async function deleteLocationHours(locationId: string): Promise<void> {
+export async function deleteResourceHours(physicalLocationId: string): Promise<void> {
   const supabase = createSupabaseClient();
   const { error } = await supabase
-    .from('location_hours')
+    .from('resource_hours')
     .delete()
-    .eq('location_id', locationId);
+    .eq('physical_location_id', physicalLocationId);
   if (error) throw new Error(error.message);
 }
 
-export async function softDeleteLocation(id: string): Promise<void> {
+export async function deletePhysicalLocation(id: string): Promise<void> {
   const supabase = createSupabaseClient();
   const { error } = await supabase
-    .from('locations')
-    .update({ is_active: false })
+    .from('physical_locations')
+    .delete()
     .eq('id', id);
   if (error) throw new Error(error.message);
 }

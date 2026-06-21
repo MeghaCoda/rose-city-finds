@@ -16,34 +16,31 @@ export type Database = {
     Tables: {
       community_notes: {
         Row: {
-          author_id: string | null
+          author_id: string
           body: string
-          created_at: string
-          flagged_reason: string | null
+          created_at: string | null
           id: string
-          is_flagged: boolean
-          location_id: string
+          is_flagged: boolean | null
           rating: number | null
+          resource_id: string
         }
         Insert: {
-          author_id?: string | null
+          author_id: string
           body: string
-          created_at?: string
-          flagged_reason?: string | null
+          created_at?: string | null
           id?: string
-          is_flagged?: boolean
-          location_id: string
+          is_flagged?: boolean | null
           rating?: number | null
+          resource_id: string
         }
         Update: {
-          author_id?: string | null
+          author_id?: string
           body?: string
-          created_at?: string
-          flagged_reason?: string | null
+          created_at?: string | null
           id?: string
-          is_flagged?: boolean
-          location_id?: string
+          is_flagged?: boolean | null
           rating?: number | null
+          resource_id?: string
         }
         Relationships: [
           {
@@ -54,10 +51,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "community_notes_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "community_notes_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
             referencedColumns: ["id"]
           },
         ]
@@ -65,36 +62,36 @@ export type Database = {
       edit_history: {
         Row: {
           approved_by: string | null
-          changed_at: string
-          changed_by: string | null
+          changed_at: string | null
+          changed_by: string
           edit_id: string | null
           field_name: string
           id: string
-          location_id: string
           new_value: string | null
           old_value: string | null
+          resource_id: string
         }
         Insert: {
           approved_by?: string | null
-          changed_at?: string
-          changed_by?: string | null
+          changed_at?: string | null
+          changed_by: string
           edit_id?: string | null
           field_name: string
           id?: string
-          location_id: string
           new_value?: string | null
           old_value?: string | null
+          resource_id: string
         }
         Update: {
           approved_by?: string | null
-          changed_at?: string
-          changed_by?: string | null
+          changed_at?: string | null
+          changed_by?: string
           edit_id?: string | null
           field_name?: string
           id?: string
-          location_id?: string
           new_value?: string | null
           old_value?: string | null
+          resource_id?: string
         }
         Relationships: [
           {
@@ -119,63 +116,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "edit_history_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "edit_history_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
             referencedColumns: ["id"]
           },
         ]
       }
       edits: {
         Row: {
-          created_at: string
+          created_at: string | null
           field_name: string
           id: string
-          location_id: string
-          new_value: string
+          new_value: string | null
           old_value: string | null
-          reason: string | null
-          reviewed_at: string | null
+          resource_id: string
           reviewed_by: string | null
-          reviewer_note: string | null
           status: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string | null
+          submitted_by: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           field_name: string
           id?: string
-          location_id: string
-          new_value: string
+          new_value?: string | null
           old_value?: string | null
-          reason?: string | null
-          reviewed_at?: string | null
+          resource_id: string
           reviewed_by?: string | null
-          reviewer_note?: string | null
           status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string | null
+          submitted_by: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           field_name?: string
           id?: string
-          location_id?: string
-          new_value?: string
+          new_value?: string | null
           old_value?: string | null
-          reason?: string | null
-          reviewed_at?: string | null
+          resource_id?: string
           reviewed_by?: string | null
-          reviewer_note?: string | null
           status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string | null
+          submitted_by?: string
         }
         Relationships: [
           {
-            foreignKeyName: "edits_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "edits_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
             referencedColumns: ["id"]
           },
           {
@@ -194,211 +182,341 @@ export type Database = {
           },
         ]
       }
-      location_benefits: {
+      online_access: {
         Row: {
-          benefit: Database["public"]["Enums"]["benefit_category"]
+          created_at: string | null
           id: string
-          location_id: string
-          notes: string | null
+          instructions: string | null
+          resource_id: string
+          url: string
         }
         Insert: {
-          benefit: Database["public"]["Enums"]["benefit_category"]
+          created_at?: string | null
           id?: string
-          location_id: string
-          notes?: string | null
+          instructions?: string | null
+          resource_id: string
+          url: string
         }
         Update: {
-          benefit?: Database["public"]["Enums"]["benefit_category"]
+          created_at?: string | null
           id?: string
-          location_id?: string
-          notes?: string | null
+          instructions?: string | null
+          resource_id?: string
+          url?: string
         }
         Relationships: [
           {
-            foreignKeyName: "location_benefits_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "online_access_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
             referencedColumns: ["id"]
           },
         ]
       }
-      location_eligibility: {
+      other_access: {
         Row: {
+          created_at: string | null
           id: string
-          id_required: boolean | null
-          income_limit: string | null
-          location_id: string
           notes: string | null
-          other_requirements: string | null
-          referral_details: string | null
-          referral_required: boolean | null
-          residency_details: string | null
-          residency_required: boolean | null
+          resource_id: string
+          url: string | null
         }
         Insert: {
+          created_at?: string | null
           id?: string
-          id_required?: boolean | null
-          income_limit?: string | null
-          location_id: string
           notes?: string | null
-          other_requirements?: string | null
-          referral_details?: string | null
-          referral_required?: boolean | null
-          residency_details?: string | null
-          residency_required?: boolean | null
+          resource_id: string
+          url?: string | null
         }
         Update: {
+          created_at?: string | null
           id?: string
-          id_required?: boolean | null
-          income_limit?: string | null
-          location_id?: string
           notes?: string | null
-          other_requirements?: string | null
-          referral_details?: string | null
-          referral_required?: boolean | null
-          residency_details?: string | null
-          residency_required?: boolean | null
+          resource_id?: string
+          url?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "location_eligibility_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "other_access_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
             referencedColumns: ["id"]
           },
         ]
       }
-      location_hours: {
+      owners: {
         Row: {
-          closes_at: string | null
-          day: Database["public"]["Enums"]["day_of_week"]
+          created_at: string | null
           id: string
-          location_id: string
-          notes: string | null
-          opens_at: string | null
+          resource_id: string
+          user_id: string
+          verification_method: string | null
+          verification_notes: string | null
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
-          closes_at?: string | null
-          day: Database["public"]["Enums"]["day_of_week"]
+          created_at?: string | null
           id?: string
-          location_id: string
-          notes?: string | null
-          opens_at?: string | null
+          resource_id: string
+          user_id: string
+          verification_method?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
-          closes_at?: string | null
-          day?: Database["public"]["Enums"]["day_of_week"]
+          created_at?: string | null
           id?: string
-          location_id?: string
-          notes?: string | null
-          opens_at?: string | null
+          resource_id?: string
+          user_id?: string
+          verification_method?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "location_hours_location_id_fkey"
-            columns: ["location_id"]
+            foreignKeyName: "owners_resource_id_fkey"
+            columns: ["resource_id"]
             isOneToOne: false
-            referencedRelation: "locations"
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owners_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      locations: {
+      physical_locations: {
         Row: {
           address: string
           address2: string | null
           city: string
-          created_at: string
-          created_by: string | null
-          delivery_available: boolean | null
-          description: string | null
-          donation_link: string | null
+          created_at: string | null
           id: string
-          info_last_verified: string | null
-          is_active: boolean
           latitude: number | null
           longitude: number | null
-          name: string
           neighborhood: string | null
-          offer_desc: string | null
-          offer_source: string | null
-          owner_claimed: boolean | null
-          owner_verified_at: string | null
-          phone: string | null
+          phone_number: string | null
+          resource_id: string
           state: string
-          updated_at: string
-          verification_status: string
-          verified_at: string | null
-          volunteer_link: string | null
-          website: string | null
-          zip: string | null
-          zip_code: string | null
+          verification_status: string | null
+          zip_code: string
         }
         Insert: {
           address: string
           address2?: string | null
-          city?: string
-          created_at?: string
-          created_by?: string | null
-          delivery_available?: boolean | null
-          description?: string | null
-          donation_link?: string | null
+          city: string
+          created_at?: string | null
           id?: string
-          info_last_verified?: string | null
-          is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          name: string
           neighborhood?: string | null
-          offer_desc?: string | null
-          offer_source?: string | null
-          owner_claimed?: boolean | null
-          owner_verified_at?: string | null
-          phone?: string | null
-          state?: string
-          updated_at?: string
-          verification_status?: string
-          verified_at?: string | null
-          volunteer_link?: string | null
-          website?: string | null
-          zip?: string | null
-          zip_code?: string | null
+          phone_number?: string | null
+          resource_id: string
+          state: string
+          verification_status?: string | null
+          zip_code: string
         }
         Update: {
           address?: string
           address2?: string | null
           city?: string
-          created_at?: string
-          created_by?: string | null
-          delivery_available?: boolean | null
-          description?: string | null
-          donation_link?: string | null
+          created_at?: string | null
           id?: string
-          info_last_verified?: string | null
-          is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          name?: string
           neighborhood?: string | null
-          offer_desc?: string | null
-          offer_source?: string | null
-          owner_claimed?: boolean | null
-          owner_verified_at?: string | null
-          phone?: string | null
+          phone_number?: string | null
+          resource_id?: string
           state?: string
-          updated_at?: string
-          verification_status?: string
-          verified_at?: string | null
-          volunteer_link?: string | null
-          website?: string | null
-          zip?: string | null
-          zip_code?: string | null
+          verification_status?: string | null
+          zip_code?: string
         }
         Relationships: [
           {
-            foreignKeyName: "locations_created_by_fkey"
+            foreignKeyName: "physical_locations_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_benefits: {
+        Row: {
+          benefit: Database["public"]["Enums"]["benefit_category"]
+          id: string
+          notes: string | null
+          resource_id: string
+        }
+        Insert: {
+          benefit: Database["public"]["Enums"]["benefit_category"]
+          id?: string
+          notes?: string | null
+          resource_id: string
+        }
+        Update: {
+          benefit?: Database["public"]["Enums"]["benefit_category"]
+          id?: string
+          notes?: string | null
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_benefits_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_eligibility: {
+        Row: {
+          id: string
+          id_required: boolean | null
+          income_limit: string | null
+          notes: string | null
+          other_requirements: string | null
+          referral_required: boolean | null
+          residency_required: boolean | null
+          resource_id: string
+        }
+        Insert: {
+          id?: string
+          id_required?: boolean | null
+          income_limit?: string | null
+          notes?: string | null
+          other_requirements?: string | null
+          referral_required?: boolean | null
+          residency_required?: boolean | null
+          resource_id: string
+        }
+        Update: {
+          id?: string
+          id_required?: boolean | null
+          income_limit?: string | null
+          notes?: string | null
+          other_requirements?: string | null
+          referral_required?: boolean | null
+          residency_required?: boolean | null
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_eligibility_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_hours: {
+        Row: {
+          closes_at: string
+          day: Database["public"]["Enums"]["day_of_week"]
+          id: string
+          notes: string | null
+          opens_at: string
+          physical_location_id: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          closes_at: string
+          day: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          notes?: string | null
+          opens_at: string
+          physical_location_id: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          closes_at?: string
+          day?: Database["public"]["Enums"]["day_of_week"]
+          id?: string
+          notes?: string | null
+          opens_at?: string
+          physical_location_id?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_hours_physical_location_id_fkey"
+            columns: ["physical_location_id"]
+            isOneToOne: false
+            referencedRelation: "physical_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          benefits: Database["public"]["Enums"]["benefit_category"][] | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          offer_desc: string | null
+          offer_source: string | null
+          updated_at: string | null
+          verification_status: string | null
+        }
+        Insert: {
+          benefits?: Database["public"]["Enums"]["benefit_category"][] | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          offer_desc?: string | null
+          offer_source?: string | null
+          updated_at?: string | null
+          verification_status?: string | null
+        }
+        Update: {
+          benefits?: Database["public"]["Enums"]["benefit_category"][] | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          offer_desc?: string | null
+          offer_source?: string | null
+          updated_at?: string | null
+          verification_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -408,73 +526,37 @@ export type Database = {
       }
       submissions: {
         Row: {
-          address: string
+          access_notes: string | null
           benefits: Database["public"]["Enums"]["benefit_category"][] | null
-          city: string
-          created_at: string
+          created_at: string | null
           description: string | null
-          eligibility_notes: string | null
-          hours_notes: string | null
           id: string
-          latitude: number | null
-          longitude: number | null
           name: string
-          neighborhood: string | null
-          phone: string | null
-          reviewed_at: string | null
           reviewed_by: string | null
-          reviewer_note: string | null
-          state: string
           status: Database["public"]["Enums"]["submission_status"]
-          submitted_by: string | null
-          website: string | null
-          zip: string | null
+          submitted_by: string
         }
         Insert: {
-          address: string
+          access_notes?: string | null
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
-          city?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          eligibility_notes?: string | null
-          hours_notes?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
           name: string
-          neighborhood?: string | null
-          phone?: string | null
-          reviewed_at?: string | null
           reviewed_by?: string | null
-          reviewer_note?: string | null
-          state?: string
           status?: Database["public"]["Enums"]["submission_status"]
-          submitted_by?: string | null
-          website?: string | null
-          zip?: string | null
+          submitted_by: string
         }
         Update: {
-          address?: string
+          access_notes?: string | null
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
-          city?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          eligibility_notes?: string | null
-          hours_notes?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
           name?: string
-          neighborhood?: string | null
-          phone?: string | null
-          reviewed_at?: string | null
           reviewed_by?: string | null
-          reviewer_note?: string | null
-          state?: string
           status?: Database["public"]["Enums"]["submission_status"]
-          submitted_by?: string | null
-          website?: string | null
-          zip?: string | null
+          submitted_by?: string
         }
         Relationships: [
           {
@@ -495,57 +577,111 @@ export type Database = {
       }
       users: {
         Row: {
-          created_at: string
+          created_at: string | null
           email: string
           id: string
-          is_active: boolean
-          last_login_at: string | null
-          password_hash: string
           role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           email: string
           id?: string
-          is_active?: boolean
-          last_login_at?: string | null
-          password_hash: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           email?: string
           id?: string
-          is_active?: boolean
-          last_login_at?: string | null
-          password_hash?: string
           role?: Database["public"]["Enums"]["user_role"]
           username?: string
         }
         Relationships: []
+      }
+      verification_events: {
+        Row: {
+          id: string
+          method: string | null
+          notes: string | null
+          outcome: string | null
+          owner_id: string | null
+          physical_location_id: string | null
+          resource_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          id?: string
+          method?: string | null
+          notes?: string | null
+          outcome?: string | null
+          owner_id?: string | null
+          physical_location_id?: string | null
+          resource_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          id?: string
+          method?: string | null
+          notes?: string | null
+          outcome?: string | null
+          owner_id?: string | null
+          physical_location_id?: string | null
+          resource_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_events_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_events_physical_location_id_fkey"
+            columns: ["physical_location_id"]
+            isOneToOne: false
+            referencedRelation: "physical_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_events_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_events_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      earth: { Args: never; Returns: number }
+      [_ in never]: never
     }
     Enums: {
       benefit_category:
-        | "snap_accepted"
-        | "snap_double_dollars"
-        | "wic_accepted"
         | "free_food"
-        | "food_pantry"
-        | "community_fridge"
-        | "coupon_deal"
-        | "sliding_scale"
+        | "discounted_food"
+        | "snap_accepted"
         | "student_discount"
-        | "military_discount"
         | "senior_discount"
+        | "kids_eat_free"
+        | "bogo"
+        | "coupon"
+        | "free_breakfast"
         | "other"
       day_of_week:
         | "monday"
@@ -557,7 +693,7 @@ export type Database = {
         | "sunday"
       edit_status: "pending" | "approved" | "rejected"
       submission_status: "pending" | "approved" | "rejected"
-      user_role: "admin" | "reviewer" | "contributor"
+      user_role: "admin" | "owner" | "contributor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -686,17 +822,15 @@ export const Constants = {
   public: {
     Enums: {
       benefit_category: [
-        "snap_accepted",
-        "snap_double_dollars",
-        "wic_accepted",
         "free_food",
-        "food_pantry",
-        "community_fridge",
-        "coupon_deal",
-        "sliding_scale",
+        "discounted_food",
+        "snap_accepted",
         "student_discount",
-        "military_discount",
         "senior_discount",
+        "kids_eat_free",
+        "bogo",
+        "coupon",
+        "free_breakfast",
         "other",
       ],
       day_of_week: [
@@ -710,7 +844,7 @@ export const Constants = {
       ],
       edit_status: ["pending", "approved", "rejected"],
       submission_status: ["pending", "approved", "rejected"],
-      user_role: ["admin", "reviewer", "contributor"],
+      user_role: ["admin", "owner", "contributor", "viewer"],
     },
   },
 } as const

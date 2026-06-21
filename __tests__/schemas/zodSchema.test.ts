@@ -1,285 +1,209 @@
 import { describe, it, expect } from 'vitest'
-import { LocationSchema, LocationInputSchema, LocationUpdateSchema, VerificationEventSchema, VerificationEventInputSchema, VerificationEventUpdateSchema } from '@/schemas/zodSchema'
+import {
+  PhysicalLocationsSchema,
+  VerificationEventsSchema,
+} from '@/schemas/zodSchema'
 import type { VerificationEvent } from '@/schemas/zodSchema'
-import { mockLocation, mockHours } from '@/__mocks__/mockData'
+import {
+  PhysicalLocationInputSchema,
+  PhysicalLocationUpdateSchema,
+} from '@/app/api/locations/schemas'
+import { mockLocation, MOCK_LOCATION_ID, MOCK_RESOURCE_ID, MOCK_HOURS_ID } from '@/__mocks__/mockData'
 
-describe('LocationSchema', () => {
+describe('PhysicalLocationsSchema', () => {
   it('accepts a valid location', () => {
-    expect(LocationSchema.safeParse(mockLocation).success).toBe(true)
-  })
-
-  it('rejects missing required field: name', () => {
-    const { name: _name, ...rest } = mockLocation
-    expect(LocationSchema.safeParse(rest).success).toBe(false)
+    expect(PhysicalLocationsSchema.safeParse(mockLocation).success).toBe(true)
   })
 
   it('rejects missing required field: address', () => {
     const { address: _address, ...rest } = mockLocation
-    expect(LocationSchema.safeParse(rest).success).toBe(false)
+    expect(PhysicalLocationsSchema.safeParse(rest).success).toBe(false)
   })
 
-  it('rejects non-string id', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, id: 123 }).success).toBe(false)
+  it('rejects missing required field: city', () => {
+    const { city: _city, ...rest } = mockLocation
+    expect(PhysicalLocationsSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it('rejects missing required field: resource_id', () => {
+    const { resource_id: _rid, ...rest } = mockLocation
+    expect(PhysicalLocationsSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it('rejects non-UUID id', () => {
+    expect(PhysicalLocationsSchema.safeParse({ ...mockLocation, id: 'not-a-uuid' }).success).toBe(false)
+  })
+
+  it('rejects non-UUID resource_id', () => {
+    expect(PhysicalLocationsSchema.safeParse({ ...mockLocation, resource_id: 'not-a-uuid' }).success).toBe(false)
   })
 
   it('rejects non-number latitude', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, latitude: '45.523' }).success).toBe(false)
+    expect(PhysicalLocationsSchema.safeParse({ ...mockLocation, latitude: '45.523' }).success).toBe(false)
   })
 
-  it('rejects invalid HH:MM time format in hours', () => {
-    const result = LocationSchema.safeParse({
+  it('rejects zip_code shorter than 5 characters', () => {
+    expect(PhysicalLocationsSchema.safeParse({ ...mockLocation, zip_code: '9720' }).success).toBe(false)
+  })
+
+  it('rejects zip_code longer than 10 characters', () => {
+    expect(PhysicalLocationsSchema.safeParse({ ...mockLocation, zip_code: '97201-12345' }).success).toBe(false)
+  })
+
+  it('accepts null for nullable optional fields', () => {
+    expect(PhysicalLocationsSchema.safeParse({
       ...mockLocation,
-      hours: { ...mockHours, monday: [{ start: '8:00', end: '17:00' }] },
-    })
-    expect(result.success).toBe(false)
+      address2: null,
+      neighborhood: null,
+      latitude: null,
+      longitude: null,
+      phone_number: null,
+      verification_status: null,
+      created_at: null,
+    }).success).toBe(true)
   })
 
   it('accepts optional fields when provided', () => {
-    const result = LocationSchema.safeParse({
+    const result = PhysicalLocationsSchema.safeParse({
       ...mockLocation,
       address2: 'Suite 100',
-      website: 'https://example.com',
-      donationLink: 'https://donate.example.com',
-      volunteerLink: 'https://volunteer.example.com',
-      phoneNumber: '503-555-1234',
-      notes: 'Some notes',
+      neighborhood: 'Pearl District',
+      phone_number: '503-555-9999',
+      verification_status: 'approved',
     })
     expect(result.success).toBe(true)
   })
 
-  it('accepts optional fields when omitted', () => {
-    const result = LocationSchema.safeParse(mockLocation)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.address2).toBeUndefined()
-      expect(result.data.website).toBeUndefined()
-    }
-  })
-
-  it('accepts empty string for website', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, website: '' }).success).toBe(true)
-  })
-
-  it('rejects invalid URL for website', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, website: 'not-a-url' }).success).toBe(false)
-  })
-
-  it('accepts empty string for donationLink', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, donationLink: '' }).success).toBe(true)
-  })
-
-  it('rejects non-boolean deliveryAvailable', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, deliveryAvailable: 'yes' }).success).toBe(false)
-  })
-
-  it('accepts multiple time slots per day', () => {
-    const result = LocationSchema.safeParse({
+  it('rejects an invalid verification_status value', () => {
+    expect(PhysicalLocationsSchema.safeParse({
       ...mockLocation,
-      hours: {
-        ...mockHours,
-        monday: [
-          { start: '08:00', end: '12:00' },
-          { start: '13:00', end: '17:00' },
-        ],
-      },
+      verification_status: 'verified',
+    }).success).toBe(false)
+  })
+})
+
+describe('PhysicalLocationInputSchema', () => {
+  it('accepts valid input without id and created_at', () => {
+    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
+    expect(PhysicalLocationInputSchema.safeParse(input).success).toBe(true)
+  })
+
+  it('rejects missing required address', () => {
+    const { id: _id, created_at: _ca, address: _addr, resource_hours: _rh, ...rest } = mockLocation
+    expect(PhysicalLocationInputSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it('rejects missing required resource_id', () => {
+    const { id: _id, created_at: _ca, resource_id: _rid, resource_hours: _rh, ...rest } = mockLocation
+    expect(PhysicalLocationInputSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it('accepts resource_hours array', () => {
+    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
+    const result = PhysicalLocationInputSchema.safeParse({
+      ...input,
+      resource_hours: [
+        { day: 'monday', opens_at: '08:00', closes_at: '17:00' },
+      ],
     })
     expect(result.success).toBe(true)
   })
 
-  it('rejects missing verificationStatus', () => {
-    const { verificationStatus: _vs, ...rest } = mockLocation
-    expect(LocationSchema.safeParse(rest).success).toBe(false)
+  it('accepts missing resource_hours (optional)', () => {
+    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
+    expect(PhysicalLocationInputSchema.safeParse(input).success).toBe(true)
   })
 
-  it('rejects invalid verificationStatus', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, verificationStatus: 'verified' }).success).toBe(false)
-  })
-
-  it('accepts all valid verificationStatus values', () => {
-    for (const status of ['pending', 'confirmed', 'unverified'] as const) {
-      expect(LocationSchema.safeParse({ ...mockLocation, verificationStatus: status }).success).toBe(true)
-    }
-  })
-
-  it('accepts null ownerClaimed', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, ownerClaimed: null }).success).toBe(true)
-  })
-
-  it('accepts boolean ownerClaimed', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, ownerClaimed: true }).success).toBe(true)
-  })
-
-  it('accepts null ownerVerifiedAt', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, ownerVerifiedAt: null }).success).toBe(true)
-  })
-
-  it('accepts a timestamp string for ownerVerifiedAt', () => {
-    expect(LocationSchema.safeParse({ ...mockLocation, ownerVerifiedAt: '2026-06-12T00:00:00Z' }).success).toBe(true)
+  it('rejects invalid opens_at time format in resource_hours', () => {
+    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
+    const result = PhysicalLocationInputSchema.safeParse({
+      ...input,
+      resource_hours: [{ day: 'monday', opens_at: '8:00', closes_at: '17:00' }],
+    })
+    expect(result.success).toBe(false)
   })
 })
 
-describe('LocationInputSchema', () => {
-  it('accepts valid input without id and lastUpdated', () => {
-    const { id: _id, lastUpdated: _lastUpdated, ...input } = mockLocation
-    expect(LocationInputSchema.safeParse(input).success).toBe(true)
-  })
-
-  it('rejects missing required name', () => {
-    const { id: _id, lastUpdated: _lastUpdated, name: _name, ...rest } = mockLocation
-    expect(LocationInputSchema.safeParse(rest).success).toBe(false)
-  })
-
-  it('defaults verificationStatus to unverified when omitted', () => {
-    const { id: _id, lastUpdated: _lastUpdated, verificationStatus: _vs, ...rest } = mockLocation
-    const result = LocationInputSchema.safeParse(rest)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.verificationStatus).toBe('unverified')
-    }
-  })
-})
-
-describe('LocationUpdateSchema', () => {
+describe('PhysicalLocationUpdateSchema', () => {
   it('accepts an empty object (all fields optional)', () => {
-    expect(LocationUpdateSchema.safeParse({}).success).toBe(true)
+    expect(PhysicalLocationUpdateSchema.safeParse({}).success).toBe(true)
   })
 
-  it('accepts a partial update with just name', () => {
-    const result = LocationUpdateSchema.safeParse({ name: 'Updated Name' })
+  it('accepts a partial update with just address', () => {
+    const result = PhysicalLocationUpdateSchema.safeParse({ address: '456 New Ave' })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.name).toBe('Updated Name')
+      expect(result.data.address).toBe('456 New Ave')
     }
   })
 
   it('accepts a partial update with coordinates', () => {
-    const result = LocationUpdateSchema.safeParse({ latitude: 45.5, longitude: -122.7 })
+    const result = PhysicalLocationUpdateSchema.safeParse({ latitude: 45.5, longitude: -122.7 })
     expect(result.success).toBe(true)
   })
 
   it('rejects invalid field type even in partial update', () => {
-    expect(LocationUpdateSchema.safeParse({ latitude: 'not-a-number' }).success).toBe(false)
+    expect(PhysicalLocationUpdateSchema.safeParse({ latitude: 'not-a-number' }).success).toBe(false)
   })
 
-  it('accepts partial hours update', () => {
-    const result = LocationUpdateSchema.safeParse({
-      hours: { ...mockHours, monday: [{ start: '09:00', end: '18:00' }] },
+  it('accepts partial update with resource_hours', () => {
+    const result = PhysicalLocationUpdateSchema.safeParse({
+      resource_hours: [{ day: 'tuesday', opens_at: '09:00', closes_at: '18:00' }],
     })
     expect(result.success).toBe(true)
-  })
-
-  it('rejects invalid verificationStatus in partial update', () => {
-    expect(LocationUpdateSchema.safeParse({ verificationStatus: 'invalid' }).success).toBe(false)
   })
 })
 
 const mockVerificationEvent: VerificationEvent = {
-  id: 'event-uuid-123',
-  locationId: 'test-uuid-123',
-  verifiedAt: '2026-06-12T00:00:00Z',
+  id: MOCK_HOURS_ID,
+  resource_id: MOCK_RESOURCE_ID,
+  physical_location_id: MOCK_LOCATION_ID,
+  owner_id: null,
+  verified_at: '2026-06-12T00:00:00Z',
+  verified_by: null,
+  method: 'phone',
+  outcome: 'confirmed',
+  notes: null,
 }
 
-describe('VerificationEventSchema', () => {
+describe('VerificationEventsSchema', () => {
   it('accepts a minimal valid event', () => {
-    expect(VerificationEventSchema.safeParse(mockVerificationEvent).success).toBe(true)
+    expect(VerificationEventsSchema.safeParse({ id: MOCK_HOURS_ID }).success).toBe(true)
   })
 
   it('accepts a fully populated event', () => {
-    expect(VerificationEventSchema.safeParse({
+    expect(VerificationEventsSchema.safeParse(mockVerificationEvent).success).toBe(true)
+  })
+
+  it('rejects non-UUID id', () => {
+    expect(VerificationEventsSchema.safeParse({ id: 'not-a-uuid' }).success).toBe(false)
+  })
+
+  it('rejects non-UUID resource_id when provided', () => {
+    expect(VerificationEventsSchema.safeParse({
       ...mockVerificationEvent,
-      verifiedBy: 'admin@example.com',
-      method: 'phone',
-      outcome: 'confirmed',
-      notes: 'Called and confirmed hours',
-      isOwner: false,
-    }).success).toBe(true)
-  })
-
-  it('rejects missing locationId', () => {
-    const { locationId: _lid, ...rest } = mockVerificationEvent
-    expect(VerificationEventSchema.safeParse(rest).success).toBe(false)
-  })
-
-  it('rejects missing verifiedAt', () => {
-    const { verifiedAt: _va, ...rest } = mockVerificationEvent
-    expect(VerificationEventSchema.safeParse(rest).success).toBe(false)
-  })
-
-  it('accepts all valid method values', () => {
-    for (const method of ['phone', 'website', 'email', 'in-person', 'owner-portal'] as const) {
-      expect(VerificationEventSchema.safeParse({ ...mockVerificationEvent, method }).success).toBe(true)
-    }
-  })
-
-  it('rejects invalid method', () => {
-    expect(VerificationEventSchema.safeParse({ ...mockVerificationEvent, method: 'fax' }).success).toBe(false)
-  })
-
-  it('accepts all valid outcome values', () => {
-    for (const outcome of ['confirmed', 'no-answer', 'info-updated', 'closed', 'unverifiable'] as const) {
-      expect(VerificationEventSchema.safeParse({ ...mockVerificationEvent, outcome }).success).toBe(true)
-    }
-  })
-
-  it('rejects invalid outcome', () => {
-    expect(VerificationEventSchema.safeParse({ ...mockVerificationEvent, outcome: 'maybe' }).success).toBe(false)
-  })
-
-  it('accepts null for nullable optional fields', () => {
-    expect(VerificationEventSchema.safeParse({
-      ...mockVerificationEvent,
-      verifiedBy: null,
-      method: null,
-      outcome: null,
-      notes: null,
-      isOwner: null,
-    }).success).toBe(true)
-  })
-})
-
-describe('VerificationEventInputSchema', () => {
-  it('accepts valid input without id', () => {
-    expect(VerificationEventInputSchema.safeParse({
-      locationId: 'test-uuid-123',
-      verifiedAt: '2026-06-12T00:00:00Z',
-    }).success).toBe(true)
-  })
-
-  it('rejects missing locationId', () => {
-    expect(VerificationEventInputSchema.safeParse({
-      verifiedAt: '2026-06-12T00:00:00Z',
+      resource_id: 'not-a-uuid',
     }).success).toBe(false)
   })
 
-  it('uses default verifiedAt when omitted', () => {
-    const result = VerificationEventInputSchema.safeParse({
-      locationId: 'test-uuid-123',
-    })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.verifiedAt).toBeDefined()
-    }
-  })
-})
-
-describe('VerificationEventUpdateSchema', () => {
-  it('accepts an empty object (all fields optional)', () => {
-    expect(VerificationEventUpdateSchema.safeParse({}).success).toBe(true)
+  it('accepts null for all nullable optional fields', () => {
+    expect(VerificationEventsSchema.safeParse({
+      id: MOCK_HOURS_ID,
+      resource_id: null,
+      physical_location_id: null,
+      owner_id: null,
+      verified_at: null,
+      verified_by: null,
+      method: null,
+      outcome: null,
+      notes: null,
+    }).success).toBe(true)
   })
 
-  it('accepts a partial update with just outcome', () => {
-    const result = VerificationEventUpdateSchema.safeParse({ outcome: 'confirmed' })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.outcome).toBe('confirmed')
-    }
-  })
-
-  it('rejects invalid outcome in partial update', () => {
-    expect(VerificationEventUpdateSchema.safeParse({ outcome: 'invalid' }).success).toBe(false)
-  })
-
-  it('rejects invalid method in partial update', () => {
-    expect(VerificationEventUpdateSchema.safeParse({ method: 'fax' }).success).toBe(false)
+  it('rejects invalid datetime for verified_at', () => {
+    expect(VerificationEventsSchema.safeParse({
+      ...mockVerificationEvent,
+      verified_at: 'not-a-date',
+    }).success).toBe(false)
   })
 })

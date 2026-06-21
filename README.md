@@ -56,3 +56,7 @@ The project is designed to scale its moderation model as the community grows.
 Phase 1 (current) — Admin controlled: All data goes through a single admin. Anyone can submit a new resource or propose an edit, but nothing goes live without admin approval. This ensures data accuracy in the early stages.
 Phase 2 — Volunteer contributors: As the project gains momentum, trusted volunteers can be granted the contributor role, allowing them to approve edits and verify resources without admin involvement.
 Phase 3 — Community moderation: If the project grows large enough, verified owners will be able to manage their own listings directly, and the model opens up to wikipedia-style community editing for general users.
+
+#Roadmap
+
+In the future contributors who have physically been to a location can leave reviews and rate locations.

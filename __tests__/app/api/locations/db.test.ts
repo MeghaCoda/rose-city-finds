@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  fetchActiveLocations,
-  fetchLocationById,
-  insertLocation,
-  insertLocationHours,
-  updateLocationRow,
-  deleteLocationHours,
-  softDeleteLocation,
+  fetchPhysicalLocations,
+  fetchPhysicalLocationById,
+  insertPhysicalLocation,
+  insertResourceHours,
+  updatePhysicalLocationRow,
+  deleteResourceHours,
+  deletePhysicalLocation,
 } from '@/app/api/locations/db'
-import { mockDbRow } from '@/__mocks__/mockData'
+import { mockDbRow, MOCK_LOCATION_ID, MOCK_RESOURCE_ID } from '@/__mocks__/mockData'
 
 // Builds a chainable, awaitable Supabase query builder mock.
 function makeBuilder(result: { data: unknown; error: unknown }) {
@@ -38,128 +38,166 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('fetchActiveLocations', () => {
+describe('fetchPhysicalLocations', () => {
   it('returns rows on success', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: [mockDbRow], error: null }))
 
-    const result = await fetchActiveLocations()
+    const result = await fetchPhysicalLocations()
 
     expect(result).toEqual([mockDbRow])
-    expect(mockFrom).toHaveBeenCalledWith('locations')
+    expect(mockFrom).toHaveBeenCalledWith('physical_locations')
+  })
+
+  it('selects with resource_hours join', async () => {
+    const builder = makeBuilder({ data: [mockDbRow], error: null })
+    mockFrom.mockReturnValue(builder)
+
+    await fetchPhysicalLocations()
+
+    expect(builder.select).toHaveBeenCalledWith('*, resource_hours(*)')
+  })
+
+  it('filters by approved verification_status', async () => {
+    const builder = makeBuilder({ data: [mockDbRow], error: null })
+    mockFrom.mockReturnValue(builder)
+
+    await fetchPhysicalLocations()
+
+    expect(builder.eq).toHaveBeenCalledWith('verification_status', 'approved')
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'DB error' } }))
 
-    await expect(fetchActiveLocations()).rejects.toThrow('DB error')
+    await expect(fetchPhysicalLocations()).rejects.toThrow('DB error')
   })
 })
 
-describe('fetchLocationById', () => {
+describe('fetchPhysicalLocationById', () => {
   it('returns a single row on success', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: mockDbRow, error: null }))
 
-    const result = await fetchLocationById('test-uuid-123')
+    const result = await fetchPhysicalLocationById(MOCK_LOCATION_ID)
 
     expect(result).toEqual(mockDbRow)
-    expect(mockFrom).toHaveBeenCalledWith('locations')
+    expect(mockFrom).toHaveBeenCalledWith('physical_locations')
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Not found' } }))
 
-    await expect(fetchLocationById('bad-id')).rejects.toThrow('Not found')
+    await expect(fetchPhysicalLocationById('bad-id')).rejects.toThrow('Not found')
   })
 })
 
-describe('insertLocation', () => {
+describe('insertPhysicalLocation', () => {
   it('returns the new row id on success', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: { id: 'new-uuid' }, error: null }))
 
-    const result = await insertLocation({ name: 'Test', address: '123 St', city: 'Portland', state: 'OR' } as never)
+    const result = await insertPhysicalLocation({
+      resource_id: MOCK_RESOURCE_ID,
+      address: '123 St',
+      city: 'Portland',
+      state: 'OR',
+      zip_code: '97201',
+      address2: null,
+      neighborhood: null,
+      latitude: null,
+      longitude: null,
+      phone_number: null,
+      verification_status: null,
+    })
 
     expect(result).toEqual({ id: 'new-uuid' })
-    expect(mockFrom).toHaveBeenCalledWith('locations')
+    expect(mockFrom).toHaveBeenCalledWith('physical_locations')
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Insert failed' } }))
 
-    await expect(insertLocation({} as never)).rejects.toThrow('Insert failed')
+    await expect(insertPhysicalLocation({} as never)).rejects.toThrow('Insert failed')
   })
 })
 
-describe('insertLocationHours', () => {
+describe('insertResourceHours', () => {
   it('inserts hours without throwing on success', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: null }))
 
     await expect(
-      insertLocationHours([{ location_id: 'uuid', day: 'monday', opens_at: '08:00:00', closes_at: '17:00:00' }])
+      insertResourceHours([{
+        physical_location_id: MOCK_LOCATION_ID,
+        day: 'monday',
+        opens_at: '08:00:00',
+        closes_at: '17:00:00',
+        notes: null,
+        valid_from: null,
+        valid_until: null,
+      }])
     ).resolves.toBeUndefined()
 
-    expect(mockFrom).toHaveBeenCalledWith('location_hours')
+    expect(mockFrom).toHaveBeenCalledWith('resource_hours')
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Hours insert failed' } }))
 
-    await expect(insertLocationHours([])).rejects.toThrow('Hours insert failed')
+    await expect(insertResourceHours([])).rejects.toThrow('Hours insert failed')
   })
 })
 
-describe('updateLocationRow', () => {
+describe('updatePhysicalLocationRow', () => {
   it('updates without throwing on success', async () => {
     const builder = makeBuilder({ data: null, error: null })
     mockFrom.mockReturnValue(builder)
 
-    await updateLocationRow('test-uuid-123', { name: 'Updated Name' })
+    await updatePhysicalLocationRow(MOCK_LOCATION_ID, { address: 'New Address' })
 
-    expect(mockFrom).toHaveBeenCalledWith('locations')
-    expect(builder.update).toHaveBeenCalledWith({ name: 'Updated Name' })
-    expect(builder.eq).toHaveBeenCalledWith('id', 'test-uuid-123')
+    expect(mockFrom).toHaveBeenCalledWith('physical_locations')
+    expect(builder.update).toHaveBeenCalledWith({ address: 'New Address' })
+    expect(builder.eq).toHaveBeenCalledWith('id', MOCK_LOCATION_ID)
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Update failed' } }))
 
-    await expect(updateLocationRow('bad-id', {})).rejects.toThrow('Update failed')
+    await expect(updatePhysicalLocationRow('bad-id', {})).rejects.toThrow('Update failed')
   })
 })
 
-describe('deleteLocationHours', () => {
+describe('deleteResourceHours', () => {
   it('deletes hours without throwing on success', async () => {
     const builder = makeBuilder({ data: null, error: null })
     mockFrom.mockReturnValue(builder)
 
-    await deleteLocationHours('test-uuid-123')
+    await deleteResourceHours(MOCK_LOCATION_ID)
 
-    expect(mockFrom).toHaveBeenCalledWith('location_hours')
+    expect(mockFrom).toHaveBeenCalledWith('resource_hours')
     expect(builder.delete).toHaveBeenCalled()
-    expect(builder.eq).toHaveBeenCalledWith('location_id', 'test-uuid-123')
+    expect(builder.eq).toHaveBeenCalledWith('physical_location_id', MOCK_LOCATION_ID)
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Delete failed' } }))
 
-    await expect(deleteLocationHours('bad-id')).rejects.toThrow('Delete failed')
+    await expect(deleteResourceHours('bad-id')).rejects.toThrow('Delete failed')
   })
 })
 
-describe('softDeleteLocation', () => {
-  it('calls update with is_active: false', async () => {
+describe('deletePhysicalLocation', () => {
+  it('deletes the location without throwing on success', async () => {
     const builder = makeBuilder({ data: null, error: null })
     mockFrom.mockReturnValue(builder)
 
-    await softDeleteLocation('test-uuid-123')
+    await deletePhysicalLocation(MOCK_LOCATION_ID)
 
-    expect(mockFrom).toHaveBeenCalledWith('locations')
-    expect(builder.update).toHaveBeenCalledWith({ is_active: false })
-    expect(builder.eq).toHaveBeenCalledWith('id', 'test-uuid-123')
+    expect(mockFrom).toHaveBeenCalledWith('physical_locations')
+    expect(builder.delete).toHaveBeenCalled()
+    expect(builder.eq).toHaveBeenCalledWith('id', MOCK_LOCATION_ID)
   })
 
   it('throws when Supabase returns an error', async () => {
     mockFrom.mockReturnValue(makeBuilder({ data: null, error: { message: 'Delete failed' } }))
 
-    await expect(softDeleteLocation('bad-id')).rejects.toThrow('Delete failed')
+    await expect(deletePhysicalLocation('bad-id')).rejects.toThrow('Delete failed')
   })
 })

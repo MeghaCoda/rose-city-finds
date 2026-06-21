@@ -41,15 +41,15 @@ describe('Map', () => {
     expect(screen.getByTestId('map-select-btn')).toBeInTheDocument()
   })
 
-  it('does not show LocationDetails before a location is selected', () => {
+  it('does not show the location address before a location is selected', () => {
     render(<Map />)
-    expect(screen.queryByRole('heading', { name: mockLocation.name })).not.toBeInTheDocument()
+    expect(screen.queryByText('Portland, OR 97201')).not.toBeInTheDocument()
   })
 
   it('shows LocationDetails after selecting a location', () => {
     render(<Map />)
     fireEvent.click(screen.getByTestId('map-select-btn'))
-    expect(screen.getByRole('heading', { name: mockLocation.name })).toBeInTheDocument()
+    expect(screen.getByText('Portland, OR 97201')).toBeInTheDocument()
   })
 
   it('shows the selected location address', () => {

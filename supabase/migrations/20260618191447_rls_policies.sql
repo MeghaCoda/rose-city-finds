@@ -9,12 +9,12 @@
 
 -- Helper function: get the role of the currently logged-in user
 create or replace function public.current_user_role()
-returns user_role
+returns text
 language sql
 security definer
 stable
 as $$
-  select role from public.users where id = auth.uid();
+  select auth.jwt() -> 'app_metadata' ->> 'role';
 $$;
 
 -- Helper function: check if current user is an admin
@@ -24,10 +24,7 @@ language sql
 security definer
 stable
 as $$
-  select exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'admin'
-  );
+  select (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin';
 $$;
 
 
@@ -52,7 +49,7 @@ create policy "Logged-in users can submit resources"
   to authenticated
   with check (
     auth.uid() is not null
-    and verification_status is null  -- must not self-approve
+    and verification_status = 'pending'
   );
 
 -- Only admins can update or delete

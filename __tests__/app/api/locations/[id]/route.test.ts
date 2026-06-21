@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { PUT, DELETE } from '@/app/api/locations/[id]/route'
-import { mockLocation } from '@/__mocks__/mockData'
+import { mockLocation, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
 
 vi.mock('@/app/api/locations/service', () => ({
   updateLocation: vi.fn(),
@@ -18,41 +18,41 @@ const makeParams = (id: string) => ({ params: Promise.resolve({ id }) })
 
 describe('PUT /api/locations/[id]', () => {
   it('returns 200 with updated location on valid input', async () => {
-    vi.mocked(updateLocation).mockResolvedValue({ ...mockLocation, name: 'Updated Name' })
+    vi.mocked(updateLocation).mockResolvedValue({ ...mockLocation, address: '789 New Ave' })
 
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'PUT',
-      body: JSON.stringify({ name: 'Updated Name' }),
+      body: JSON.stringify({ address: '789 New Ave' }),
       headers: { 'Content-Type': 'application/json' },
     })
-    const response = await PUT(req, makeParams('test-uuid-123'))
+    const response = await PUT(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.name).toBe('Updated Name')
-    expect(updateLocation).toHaveBeenCalledWith('test-uuid-123', { name: 'Updated Name' })
+    expect(body.address).toBe('789 New Ave')
+    expect(updateLocation).toHaveBeenCalledWith(MOCK_LOCATION_ID, { address: '789 New Ave' })
   })
 
   it('accepts an empty body (all fields optional in update)', async () => {
     vi.mocked(updateLocation).mockResolvedValue(mockLocation)
 
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'PUT',
       body: JSON.stringify({}),
       headers: { 'Content-Type': 'application/json' },
     })
-    const response = await PUT(req, makeParams('test-uuid-123'))
+    const response = await PUT(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(200)
   })
 
   it('returns 400 when body contains invalid field types', async () => {
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'PUT',
       body: JSON.stringify({ latitude: 'not-a-number' }),
       headers: { 'Content-Type': 'application/json' },
     })
-    const response = await PUT(req, makeParams('test-uuid-123'))
+    const response = await PUT(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(400)
     const body = await response.json()
@@ -62,12 +62,12 @@ describe('PUT /api/locations/[id]', () => {
   it('returns 500 when service throws', async () => {
     vi.mocked(updateLocation).mockRejectedValue(new Error('Update failed'))
 
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'PUT',
-      body: JSON.stringify({ name: 'New' }),
+      body: JSON.stringify({ address: 'New St' }),
       headers: { 'Content-Type': 'application/json' },
     })
-    const response = await PUT(req, makeParams('test-uuid-123'))
+    const response = await PUT(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(500)
     const body = await response.json()
@@ -79,22 +79,22 @@ describe('DELETE /api/locations/[id]', () => {
   it('returns 204 on successful delete', async () => {
     vi.mocked(deleteLocation).mockResolvedValue(undefined)
 
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'DELETE',
     })
-    const response = await DELETE(req, makeParams('test-uuid-123'))
+    const response = await DELETE(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(204)
-    expect(deleteLocation).toHaveBeenCalledWith('test-uuid-123')
+    expect(deleteLocation).toHaveBeenCalledWith(MOCK_LOCATION_ID)
   })
 
   it('returns 500 when service throws', async () => {
     vi.mocked(deleteLocation).mockRejectedValue(new Error('Delete failed'))
 
-    const req = new NextRequest('http://localhost/api/locations/test-uuid-123', {
+    const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'DELETE',
     })
-    const response = await DELETE(req, makeParams('test-uuid-123'))
+    const response = await DELETE(req, makeParams(MOCK_LOCATION_ID))
 
     expect(response.status).toBe(500)
     const body = await response.json()
