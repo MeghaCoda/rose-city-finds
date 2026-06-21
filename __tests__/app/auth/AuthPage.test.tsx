@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { User } from '@supabase/supabase-js'
 import { AuthPage } from '@/app/auth/AuthPage'
+
+const mockUser = { id: 'user-1', email: 'test@example.com' } as User
 
 const mockPush = vi.fn()
 const mockRefresh = vi.fn()
@@ -21,14 +24,14 @@ afterEach(() => {
 describe('AuthPage', () => {
   describe('when signed in', () => {
     it('shows the signed-in view', () => {
-      render(<AuthPage isSignedIn={true} />)
+      render(<AuthPage user={mockUser} />)
       expect(screen.getByText("You're signed in")).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument()
     })
 
     it('calls signout and refreshes when sign out is clicked', async () => {
       vi.mocked(fetch).mockResolvedValue({ ok: true } as Response)
-      render(<AuthPage isSignedIn={true} />)
+      render(<AuthPage user={mockUser} />)
 
       fireEvent.click(screen.getByRole('button', { name: /sign out/i }))
 
@@ -40,7 +43,7 @@ describe('AuthPage', () => {
 
     it('disables the sign-out button while signing out', async () => {
       vi.mocked(fetch).mockResolvedValue(new Promise(() => {}))
-      render(<AuthPage isSignedIn={true} />)
+      render(<AuthPage user={mockUser} />)
 
       fireEvent.click(screen.getByRole('button', { name: /sign out/i }))
 
@@ -50,21 +53,21 @@ describe('AuthPage', () => {
 
   describe('when signed out', () => {
     it('shows the sign-in form by default', () => {
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
       expect(screen.getByRole('heading', { name: 'Sign In' })).toBeInTheDocument()
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
     })
 
     it('switches to the reset password form when "Forgot your password?" is clicked', () => {
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
       fireEvent.click(screen.getByText(/forgot your password/i))
       expect(screen.getByRole('heading', { name: 'Reset Password' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Sign In' })).not.toBeInTheDocument()
     })
 
     it('switches back to the sign-in form when "Back to sign in" is clicked', () => {
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
       fireEvent.click(screen.getByText(/forgot your password/i))
       fireEvent.click(screen.getByText(/back to sign in/i))
       expect(screen.getByRole('heading', { name: 'Sign In' })).toBeInTheDocument()
@@ -79,7 +82,7 @@ describe('AuthPage', () => {
 
     it('submits credentials to /api/auth/signin and redirects on success', async () => {
       vi.mocked(fetch).mockResolvedValue({ ok: true } as Response)
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
 
       fireEvent.change(screen.getByLabelText(/email/i), {
         target: { value: 'test@example.com' },
@@ -104,7 +107,7 @@ describe('AuthPage', () => {
         ok: false,
         json: async () => ({ error: 'Invalid credentials' }),
       } as Response)
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
 
       submitSignInForm()
 
@@ -117,7 +120,7 @@ describe('AuthPage', () => {
         ok: false,
         json: async () => ({}),
       } as Response)
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
 
       submitSignInForm()
 
@@ -126,7 +129,7 @@ describe('AuthPage', () => {
 
     it('disables the button and shows a loading label while submitting', async () => {
       vi.mocked(fetch).mockResolvedValue(new Promise(() => {}))
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
 
       submitSignInForm()
 
@@ -141,7 +144,7 @@ describe('AuthPage', () => {
         } as Response)
         .mockResolvedValueOnce(new Promise(() => {}))
 
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
 
       submitSignInForm()
       expect(await screen.findByRole('alert')).toBeInTheDocument()
@@ -158,7 +161,7 @@ describe('AuthPage', () => {
     }
 
     beforeEach(() => {
-      render(<AuthPage isSignedIn={false} />)
+      render(<AuthPage user={null} />)
       fireEvent.click(screen.getByText(/forgot your password/i))
     })
 
