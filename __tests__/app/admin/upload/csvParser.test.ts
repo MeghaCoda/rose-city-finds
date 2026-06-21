@@ -54,7 +54,6 @@ describe('parseOffersCSV', () => {
   })
 
   it('parses a row with a full location', () => {
-    // address is at header index 8 → 8 commas before the value
     const row = 'Oregon Food Bank,,,,,,,,7900 NE 33rd Dr,,Portland,OR,97211,Parkrose,503-282-0555,Outdoor only'
     const result = parseOffersCSV(csv(row))
     expect(result.errors).toHaveLength(0)
@@ -69,7 +68,6 @@ describe('parseOffersCSV', () => {
   })
 
   it('errors when location is partial — address present but city/state/zip missing', () => {
-    // address is at header index 8 → 8 commas before the value
     const row = 'Test,,,,,,,,123 Main St,,,,,,'
     const result = parseOffersCSV(csv(row))
     expect(result.errors).toHaveLength(1)
@@ -80,7 +78,6 @@ describe('parseOffersCSV', () => {
   })
 
   it('errors when name is missing', () => {
-    // all-empty rows are skipped by the CSV tokenizer; include a non-empty field
     const result = parseOffersCSV(csv(',Some description,,,,,,,,,,,,,,'))
     expect(result.rows).toHaveLength(0)
     expect(result.errors[0].row).toBe(2)

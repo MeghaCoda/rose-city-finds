@@ -1,60 +1,34 @@
+import { parse } from 'csv-parse/sync';
 import { VALID_BENEFITS } from './uploadConstants';
 import type { CSVOfferRow } from './actions';
 
 export type ParseError = { row: number; message: string };
 export type ParseResult = { rows: CSVOfferRow[]; errors: ParseError[] };
 
-function parseCSVText(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  let i = 0;
-
-  while (i < text.length) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"' && text[i + 1] === '"') { field += '"'; i += 2; }
-      else if (ch === '"') { inQuotes = false; i++; }
-      else { field += ch; i++; }
-    } else {
-      if (ch === '"') { inQuotes = true; i++; }
-      else if (ch === ',') { row.push(field.trim()); field = ''; i++; }
-      else if (ch === '\n' || ch === '\r') {
-        row.push(field.trim());
-        field = '';
-        if (row.some((c) => c !== '')) rows.push(row);
-        row = [];
-        if (ch === '\r' && text[i + 1] === '\n') i++;
-        i++;
-      } else { field += ch; i++; }
-    }
-  }
-  if (field || row.length) {
-    row.push(field.trim());
-    if (row.some((c) => c !== '')) rows.push(row);
-  }
-  return rows;
-}
-
 export function parseOffersCSV(text: string): ParseResult {
-  const rawRows = parseCSVText(text);
+  let rawRows: Record<string, string>[];
+  try {
+    rawRows = parse(text, {
+      columns: (header: string[]) => header.map((h) => h.toLowerCase().replace(/\s+/g, '_')),
+      skip_empty_lines: true,
+      trim: true,
+      relax_column_count: true,
+    }) as Record<string, string>[];
+  } catch {
+    return { rows: [], errors: [{ row: 0, message: 'File is empty.' }] };
+  }
+
   if (rawRows.length === 0) {
     return { rows: [], errors: [{ row: 0, message: 'File is empty.' }] };
   }
 
-  const headers = rawRows[0].map((h) => h.toLowerCase().replace(/\s+/g, '_'));
-  const dataRows = rawRows.slice(1);
   const errors: ParseError[] = [];
   const rows: CSVOfferRow[] = [];
 
-  const get = (row: string[], col: string): string => {
-    const i = headers.indexOf(col);
-    return i >= 0 ? (row[i] ?? '') : '';
-  };
+  const get = (row: Record<string, string>, col: string): string => row[col] ?? '';
 
-  for (let r = 0; r < dataRows.length; r++) {
-    const rawRow = dataRows[r];
+  for (let r = 0; r < rawRows.length; r++) {
+    const rawRow = rawRows[r];
     const rowNum = r + 2;
     const rowErrors: string[] = [];
 
