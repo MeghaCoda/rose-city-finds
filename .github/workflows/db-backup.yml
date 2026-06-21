@@ -18,9 +18,9 @@ jobs:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           pg_dump \
-            --host=db.rfiukmdsbcofrepnbigi.supabase.co \
+            --host=aws-1-us-east-2.pooler.supabase.com \
             --port=5432 \
-            --username=postgres \
+            --username=postgres.rfiukmdsbcofrepnbigi \
             --dbname=postgres \
             --no-password \
             --format=plain \
