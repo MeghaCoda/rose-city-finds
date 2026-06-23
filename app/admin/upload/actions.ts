@@ -93,6 +93,16 @@ export async function getOffers(): Promise<OfferSummary[]> {
   return data as OfferSummary[];
 }
 
+export type LocationHour = {
+  id: string;
+  day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  opens_at: string;
+  closes_at: string;
+  notes: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+};
+
 export type OfferLocation = {
   id: string;
   address: string;
@@ -106,6 +116,7 @@ export type OfferLocation = {
   phone_number: string | null;
   notes: string | null;
   verification_status: string | null;
+  hours: LocationHour[];
 };
 
 export type OfferDetail = {
@@ -143,7 +154,7 @@ export async function getOfferWithLocations(id: string): Promise<OfferDetail | n
     expires_at: o.expires_at ?? null,
     is_active: o.is_active ?? null,
     notes: o.notes ?? null,
-    locations: (locRes.data ?? []) as OfferLocation[],
+    locations: (locRes.data ?? []).map((l: Omit<OfferLocation, 'hours'>) => ({ ...l, hours: [] })),
   };
 }
 
@@ -209,11 +220,24 @@ export async function getPendingResources(): Promise<PendingResource[]> {
     .select('*')
     .in('resource_id', resourceIds);
 
-  const locationsByResource = ((locations ?? []) as Array<{ resource_id: string } & OfferLocation>).reduce<
+  const locationIds = (locations ?? []).map((l: { id: string }) => l.id);
+  const { data: hours } = locationIds.length > 0
+    ? await db.from('resource_hours').select('*').in('physical_location_id', locationIds)
+    : { data: [] };
+
+  const hoursByLocation = ((hours ?? []) as Array<LocationHour & { physical_location_id: string }>).reduce<
+    Record<string, LocationHour[]>
+  >((acc, h) => {
+    if (!acc[h.physical_location_id]) acc[h.physical_location_id] = [];
+    acc[h.physical_location_id].push(h);
+    return acc;
+  }, {});
+
+  const locationsByResource = ((locations ?? []) as Array<{ resource_id: string } & Omit<OfferLocation, 'hours'>>).reduce<
     Record<string, OfferLocation[]>
   >((acc, loc) => {
     if (!acc[loc.resource_id]) acc[loc.resource_id] = [];
-    acc[loc.resource_id].push(loc);
+    acc[loc.resource_id].push({ ...loc, hours: hoursByLocation[loc.id] ?? [] });
     return acc;
   }, {});
 

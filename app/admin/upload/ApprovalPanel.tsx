@@ -8,11 +8,43 @@ import {
   setLocationVerificationStatus,
   type PendingResource,
   type OfferLocation,
+  type LocationHour,
 } from './actions';
 import { BENEFIT_CATEGORIES } from './uploadConstants';
 
 const benefitLabel = (value: string) =>
   BENEFIT_CATEGORIES.find((b) => b.value === value)?.label ?? value;
+
+const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_LABELS: Record<string, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
+  friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
+};
+
+function formatTime(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function HoursList({ hours }: { hours: LocationHour[] }) {
+  if (hours.length === 0) return null;
+  const sorted = [...hours].sort(
+    (a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)
+  );
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      {sorted.map((h) => (
+        <p key={h.id} className="text-muted-foreground text-xs">
+          <span className="w-8 inline-block font-medium text-foreground">{DAY_LABELS[h.day]}</span>
+          {formatTime(h.opens_at)}–{formatTime(h.closes_at)}
+          {h.notes && <span className="ml-1 text-muted-foreground">({h.notes})</span>}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 function LocationCard({
   loc,
@@ -38,6 +70,12 @@ function LocationCard({
         {loc.neighborhood && <p className="text-muted-foreground">{loc.neighborhood}</p>}
         {loc.phone_number && <p className="text-muted-foreground">{loc.phone_number}</p>}
         {loc.notes && <p className="text-muted-foreground">{loc.notes}</p>}
+        {loc.hours.length > 0 && (
+          <div className="mt-1">
+            <p className="text-xs font-medium text-foreground">Hours</p>
+            <HoursList hours={loc.hours} />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
