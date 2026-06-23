@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { SingleEntrySection } from './SingleEntrySection';
 import { CSVSection } from './CSVSection';
 import { ModifyOfferPanel } from './ModifyOfferPanel';
+import { ApprovalPanel } from './ApprovalPanel';
 
-type Mode = 'select' | 'upload' | 'modify';
+type Mode = 'select' | 'upload' | 'modify' | 'approve';
 type UploadSubMode = 'single' | 'csv';
 
 export function UploadForm({ adminUserId }: { adminUserId: string }) {
@@ -17,6 +18,10 @@ export function UploadForm({ adminUserId }: { adminUserId: string }) {
 
   if (mode === 'modify') {
     return <ModifyOfferPanel onBack={() => setMode('select')} />;
+  }
+
+  if (mode === 'approve') {
+    return <ApprovalPanel onBack={() => setMode('select')} />;
   }
 
   return (
@@ -36,6 +41,13 @@ export function UploadForm({ adminUserId }: { adminUserId: string }) {
         >
           <p className="font-semibold">Modify existing data</p>
           <p className="mt-1 text-sm text-muted-foreground">Edit an existing offer and its locations</p>
+        </button>
+        <button
+          onClick={() => setMode('approve')}
+          className="rounded-xl border border-border bg-card p-6 text-left hover:border-ring transition-colors col-span-2"
+        >
+          <p className="font-semibold">Approve pending data</p>
+          <p className="mt-1 text-sm text-muted-foreground">Review and approve or reject resources awaiting verification</p>
         </button>
       </div>
     </div>

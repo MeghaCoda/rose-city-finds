@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
   }
 
   const client = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
   );
   const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
   const { error } = await client.auth.resetPasswordForEmail(email, {

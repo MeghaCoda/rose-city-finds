@@ -5,11 +5,19 @@ import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 function makeAuthClient() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!);
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 }
 
 function makeAdminClient() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_SECRET_KEY!);
+}
+
+function makeUserClient(token: string) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
 }
 
 async function verifyAdminToken(token: string) {
@@ -26,7 +34,9 @@ async function requireAdmin() {
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   if (!token) return null;
-  return verifyAdminToken(token);
+  const user = await verifyAdminToken(token);
+  if (!user) return null;
+  return { user, token };
 }
 
 export type SignInState = { error?: string };
@@ -75,8 +85,8 @@ export async function signOut() {
 export type OfferSummary = { id: string; name: string };
 
 export async function getOffers(): Promise<OfferSummary[]> {
-  const user = await requireAdmin();
-  if (!user) return [];
+  const session = await requireAdmin();
+  if (!session) return [];
   const db = makeAdminClient();
   const { data, error } = await db.from('resources').select('id, name').order('name');
   if (error || !data) return [];
@@ -113,8 +123,8 @@ export type OfferDetail = {
 };
 
 export async function getOfferWithLocations(id: string): Promise<OfferDetail | null> {
-  const user = await requireAdmin();
-  if (!user) return null;
+  const session = await requireAdmin();
+  if (!session) return null;
   const db = makeAdminClient();
   const [offerRes, locRes] = await Promise.all([
     db.from('resources').select('*').eq('id', id).single(),
@@ -153,10 +163,102 @@ export async function updateOffer(
     notes?: string | null;
   }
 ): Promise<UpdateOfferResult> {
-  const user = await requireAdmin();
-  if (!user) return { error: 'Unauthorized. Please sign in as admin.' };
+  const session = await requireAdmin();
+  if (!session) return { error: 'Unauthorized. Please sign in as admin.' };
   const db = makeAdminClient();
   const { error } = await db.from('resources').update(data).eq('id', id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+// ============================================================
+// Approval queue
+// ============================================================
+
+export type PendingResource = {
+  id: string;
+  name: string;
+  description: string | null;
+  offer_desc: string | null;
+  offer_source: string | null;
+  benefits: string[] | null;
+  expires_at: string | null;
+  is_active: boolean | null;
+  notes: string | null;
+  verification_status: string;
+  created_at: string | null;
+  locations: OfferLocation[];
+};
+
+export async function getPendingResources(): Promise<PendingResource[]> {
+  const session = await requireAdmin();
+  if (!session) return [];
+  const db = makeAdminClient();
+
+  const { data: resources, error } = await db
+    .from('resources')
+    .select('*')
+    .eq('verification_status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error || !resources || resources.length === 0) return [];
+
+  const resourceIds = resources.map((r: { id: string }) => r.id);
+  const { data: locations } = await db
+    .from('physical_locations')
+    .select('*')
+    .in('resource_id', resourceIds);
+
+  const locationsByResource = ((locations ?? []) as Array<{ resource_id: string } & OfferLocation>).reduce<
+    Record<string, OfferLocation[]>
+  >((acc, loc) => {
+    if (!acc[loc.resource_id]) acc[loc.resource_id] = [];
+    acc[loc.resource_id].push(loc);
+    return acc;
+  }, {});
+
+  return resources.map((r: {
+    id: string; name: string; description: string | null; offer_desc: string | null;
+    offer_source: string | null; benefits: string[] | null; expires_at: string | null;
+    is_active: boolean | null; notes: string | null; verification_status: string; created_at: string | null;
+  }) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description ?? null,
+    offer_desc: r.offer_desc ?? null,
+    offer_source: r.offer_source ?? null,
+    benefits: r.benefits ?? null,
+    expires_at: r.expires_at ?? null,
+    is_active: r.is_active ?? null,
+    notes: r.notes ?? null,
+    verification_status: r.verification_status,
+    created_at: r.created_at ?? null,
+    locations: locationsByResource[r.id] ?? [],
+  }));
+}
+
+export type ApproveResult = { success?: true; error?: string };
+
+export async function setResourceVerificationStatus(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<ApproveResult> {
+  const session = await requireAdmin();
+  if (!session) return { error: 'Unauthorized.' };
+  const db = makeAdminClient();
+  const { error } = await db.from('resources').update({ verification_status: status }).eq('id', id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function setLocationVerificationStatus(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<ApproveResult> {
+  const session = await requireAdmin();
+  if (!session) return { error: 'Unauthorized.' };
+  const db = makeAdminClient();
+  const { error } = await db.from('physical_locations').update({ verification_status: status }).eq('id', id);
   if (error) return { error: error.message };
   return { success: true };
 }
@@ -183,12 +285,19 @@ export type CSVOfferRow = {
     neighborhood?: string;
     phone_number?: string;
     notes?: string;
+    hours?: Array<{
+      day: string;
+      opens_at: string;
+      closes_at: string;
+      notes?: string;
+    }>;
   };
 };
 
 export type BatchUploadResult = {
   success?: true;
   created: number;
+  skipped: number;
   error?: string;
 };
 
@@ -196,13 +305,43 @@ export async function uploadOffers(
   rows: CSVOfferRow[],
   adminUserId: string
 ): Promise<BatchUploadResult> {
-  const user = await requireAdmin();
-  if (!user) return { created: 0, error: 'Unauthorized. Please sign in as admin.' };
+  const session = await requireAdmin();
+  if (!session) return { created: 0, skipped: 0, error: 'Unauthorized. Please sign in as admin.' };
 
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   let created = 0;
+  let skipped = 0;
 
   for (const row of rows) {
+    const { data: existingResource } = await db
+      .from('resources')
+      .select('id')
+      .ilike('name', row.name)
+      .maybeSingle();
+
+    if (existingResource) {
+      skipped++;
+      continue;
+    }
+
+    if (row.location) {
+      let locQuery = db
+        .from('physical_locations')
+        .select('id')
+        .ilike('address', row.location.address)
+        .ilike('city', row.location.city);
+
+      locQuery = row.location.address2
+        ? locQuery.ilike('address2', row.location.address2)
+        : locQuery.is('address2', null);
+
+      const { data: existingLoc } = await locQuery.maybeSingle();
+      if (existingLoc) {
+        skipped++;
+        continue;
+      }
+    }
+
     const { data: resource, error: resError } = await db
       .from('resources')
       .insert({
@@ -221,11 +360,11 @@ export async function uploadOffers(
       .single();
 
     if (resError || !resource) {
-      return { created, error: `Failed to create offer "${row.name}": ${resError?.message}` };
+      return { created, skipped, error: `Failed to create offer "${row.name}": ${resError?.message}` };
     }
 
     if (row.location) {
-      const { error: locError } = await db.from('physical_locations').insert({
+      const { data: location, error: locError } = await db.from('physical_locations').insert({
         resource_id: resource.id,
         address: row.location.address,
         address2: row.location.address2 ?? null,
@@ -236,17 +375,38 @@ export async function uploadOffers(
         phone_number: row.location.phone_number ?? null,
         notes: row.location.notes ?? null,
         verification_status: 'pending',
-      });
+        created_by: adminUserId,
+      }).select('id').single();
       if (locError) {
         return {
           created,
+          skipped,
           error: `Created offer "${row.name}" but failed to add its location: ${locError.message}`,
         };
+      }
+
+      if (row.location.hours && row.location.hours.length > 0) {
+        const { error: hoursError } = await db.from('resource_hours').insert(
+          row.location.hours.map((h) => ({
+            physical_location_id: location.id,
+            day: h.day,
+            opens_at: h.opens_at,
+            closes_at: h.closes_at,
+            notes: h.notes ?? null,
+          }))
+        );
+        if (hoursError) {
+          return {
+            created,
+            skipped,
+            error: `Created offer "${row.name}" but failed to add its hours: ${hoursError.message}`,
+          };
+        }
       }
     }
 
     created++;
   }
 
-  return { success: true, created };
+  return { success: true, created, skipped };
 }

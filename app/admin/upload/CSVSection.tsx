@@ -138,6 +138,7 @@ export function CSVSection({ adminUserId }: { adminUserId: string }) {
       {uploadResult?.success && (
         <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">
           Successfully created {uploadResult.created} offer{uploadResult.created !== 1 ? 's' : ''}.
+          {uploadResult.skipped > 0 && ` ${uploadResult.skipped} skipped (already exist).`}
         </div>
       )}
       {uploadResult?.error && (

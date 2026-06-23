@@ -24,6 +24,8 @@ export function parseOffersCSV(text: string): ParseResult {
 
   const errors: ParseError[] = [];
   const rows: CSVOfferRow[] = [];
+  const seenNames = new Set<string>();
+  const seenLocations = new Set<string>();
 
   const get = (row: Record<string, string>, col: string): string => row[col] ?? '';
 
@@ -88,17 +90,30 @@ export function parseOffersCSV(text: string): ParseResult {
     if (rowErrors.length > 0) {
       rowErrors.forEach((msg) => errors.push({ row: rowNum, message: msg }));
     } else if (name) {
-      rows.push({
-        name,
-        description: get(rawRow, 'description') || undefined,
-        offer_desc: get(rawRow, 'offer_desc') || undefined,
-        offer_source: get(rawRow, 'offer_source') || undefined,
-        benefits,
-        expires_at: get(rawRow, 'expires_at') || undefined,
-        is_active,
-        notes: get(rawRow, 'notes') || undefined,
-        location,
-      });
+      const nameKey = name.toLowerCase();
+      const locKey = location
+        ? [location.address, location.address2 ?? '', location.city].join('|').toLowerCase()
+        : null;
+
+      if (seenNames.has(nameKey)) {
+        errors.push({ row: rowNum, message: `duplicate resource name "${name}"` });
+      } else if (locKey !== null && seenLocations.has(locKey)) {
+        errors.push({ row: rowNum, message: `duplicate location: "${location!.address}, ${location!.city}" already appears in this file` });
+      } else {
+        seenNames.add(nameKey);
+        if (locKey !== null) seenLocations.add(locKey);
+        rows.push({
+          name,
+          description: get(rawRow, 'description') || undefined,
+          offer_desc: get(rawRow, 'offer_desc') || undefined,
+          offer_source: get(rawRow, 'offer_source') || undefined,
+          benefits,
+          expires_at: get(rawRow, 'expires_at') || undefined,
+          is_active,
+          notes: get(rawRow, 'notes') || undefined,
+          location,
+        });
+      }
     }
   }
 
