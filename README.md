@@ -59,4 +59,6 @@ Phase 3 — Community moderation: If the project grows large enough, verified ow
 
 #Roadmap
 
-In the future contributors who have physically been to a location can leave reviews and rate locations.
+- Reporting feature for individuals to flag erroneous information (offers that have ended, restarted, spam, etc)
+
+- contributors who have physically been to a location can leave reviews and rate locations.

@@ -16,8 +16,8 @@ async function getSession(): Promise<Session> {
   if (!token) return { status: 'unauthenticated' };
 
   const authClient = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
   );
   const { data: { user }, error } = await authClient.auth.getUser(token);
   if (error || !user) return { status: 'unauthenticated' };

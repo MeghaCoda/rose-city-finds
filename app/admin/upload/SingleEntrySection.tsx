@@ -5,7 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { uploadOffers, type CSVOfferRow, type BatchUploadResult } from './actions';
-import { BENEFIT_CATEGORIES, selectClass } from './uploadConstants';
+import { BENEFIT_CATEGORIES, DAYS_OF_WEEK, selectClass } from './uploadConstants';
+
+type HourEntry = {
+  day: string;
+  opens_at: string;
+  closes_at: string;
+  notes: string;
+};
 
 type SingleEntryState = {
   name: string;
@@ -24,6 +31,7 @@ type SingleEntryState = {
   neighborhood: string;
   phone_number: string;
   location_notes: string;
+  hours: HourEntry[];
 };
 
 const emptyState: SingleEntryState = {
@@ -43,6 +51,7 @@ const emptyState: SingleEntryState = {
   neighborhood: '',
   phone_number: '',
   location_notes: '',
+  hours: [],
 };
 
 function validate(s: SingleEntryState): string[] {
@@ -59,6 +68,17 @@ function validate(s: SingleEntryState): string[] {
     if (!s.state.trim()) errors.push('State is required when adding a location.');
     if (!s.zip_code.trim()) errors.push('Zip code is required when adding a location.');
   }
+
+  if (s.hours.length > 0 && !hasAnyLocation) {
+    errors.push('A location is required when adding hours.');
+  }
+
+  s.hours.forEach((h, i) => {
+    const n = i + 1;
+    if (!h.day) errors.push(`Hours row ${n}: day is required.`);
+    if (!h.opens_at) errors.push(`Hours row ${n}: opening time is required.`);
+    if (!h.closes_at) errors.push(`Hours row ${n}: closing time is required.`);
+  });
 
   return errors;
 }
@@ -87,6 +107,14 @@ function toOfferRow(s: SingleEntryState): CSVOfferRow {
           neighborhood: s.neighborhood.trim() || undefined,
           phone_number: s.phone_number.trim() || undefined,
           notes: s.location_notes.trim() || undefined,
+          hours: s.hours.length > 0
+            ? s.hours.map((h) => ({
+                day: h.day,
+                opens_at: h.opens_at,
+                closes_at: h.closes_at,
+                notes: h.notes.trim() || undefined,
+              }))
+            : undefined,
         }
       : undefined,
   };
@@ -102,6 +130,20 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
     (key: keyof SingleEntryState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((s) => ({ ...s, [key]: e.target.value }));
+
+  const addHour = () =>
+    setForm((s) => ({ ...s, hours: [...s.hours, { day: '', opens_at: '', closes_at: '', notes: '' }] }));
+
+  const removeHour = (i: number) =>
+    setForm((s) => ({ ...s, hours: s.hours.filter((_, idx) => idx !== i) }));
+
+  const setHour =
+    (i: number, key: keyof HourEntry) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((s) => ({
+        ...s,
+        hours: s.hours.map((h, idx) => (idx === i ? { ...h, [key]: e.target.value } : h)),
+      }));
 
   const toggleBenefit = (value: string) =>
     setForm((s) => ({
@@ -259,6 +301,55 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="single-location-notes">Location Notes</Label>
           <Input id="single-location-notes" value={form.location_notes} onChange={set('location_notes')} />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <Label>Hours</Label>
+            <button
+              type="button"
+              onClick={addHour}
+              className="text-sm underline underline-offset-4 hover:text-foreground transition-colors"
+            >
+              + Add hours
+            </button>
+          </div>
+          {form.hours.map((h, i) => (
+            <div key={i} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`hour-day-${i}`}>Day</Label>
+                  <select id={`hour-day-${i}`} value={h.day} onChange={setHour(i, 'day')} className={selectClass}>
+                    <option value="">Select day</option>
+                    {DAYS_OF_WEEK.map((d) => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`hour-open-${i}`}>Opens at</Label>
+                  <Input id={`hour-open-${i}`} type="time" value={h.opens_at} onChange={setHour(i, 'opens_at')} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`hour-close-${i}`}>Closes at</Label>
+                  <Input id={`hour-close-${i}`} type="time" value={h.closes_at} onChange={setHour(i, 'closes_at')} />
+                </div>
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <Label htmlFor={`hour-notes-${i}`}>Notes</Label>
+                  <Input id={`hour-notes-${i}`} value={h.notes} onChange={setHour(i, 'notes')} placeholder="e.g. Closed holidays" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeHour(i)}
+                  className="h-9 px-3 text-sm text-destructive underline underline-offset-4 hover:text-destructive/80 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </fieldset>
 

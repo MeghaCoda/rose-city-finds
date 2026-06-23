@@ -10,8 +10,8 @@ export default async function Page() {
   let user: User | null = null;
   if (token) {
     const client = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     );
     const { data } = await client.auth.getUser(token);
     user = data.user;
