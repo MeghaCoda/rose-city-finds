@@ -1,18 +1,19 @@
 -- ============================================================
 -- seed.sql
 -- Local development seed data
--- Admin user + 3 sample resources (2 with physical locations)
+-- Admin user + 3 sample resources (all with physical locations)
 -- ============================================================
 
 -- Fixed UUIDs for predictable local dev
 DO $$
 DECLARE
-  admin_id uuid := '00000000-0000-0000-0000-000000000001';
-  resource_1_id uuid := '00000000-0000-0000-0000-000000000010';
-  resource_2_id uuid := '00000000-0000-0000-0000-000000000011';
-  resource_3_id uuid := '00000000-0000-0000-0000-000000000012';
-  location_1_id uuid := '00000000-0000-0000-0000-000000000020';
-  location_2_id uuid := '00000000-0000-0000-0000-000000000021';
+  admin_id uuid := '00000000-0000-4000-8000-000000000001';
+  resource_1_id uuid := '00000000-0000-4000-8000-000000000010';
+  resource_2_id uuid := '00000000-0000-4000-8000-000000000011';
+  resource_3_id uuid := '00000000-0000-4000-8000-000000000012';
+  location_1_id uuid := '00000000-0000-4000-8000-000000000020';
+  location_2_id uuid := '00000000-0000-4000-8000-000000000021';
+  location_3_id uuid := '00000000-0000-4000-8000-000000000022';
 BEGIN
 
 -- ============================================================
@@ -105,7 +106,7 @@ VALUES (
   admin_id
 );
 
--- Resource 3: online-only coupon program (no physical location)
+-- Resource 3: coupon program with physical pickup location
 INSERT INTO resources (id, name, description, offer_desc, benefits, verification_status, is_active, created_by)
 VALUES (
   resource_3_id,
@@ -163,6 +164,26 @@ INSERT INTO physical_locations (
   admin_id
 );
 
+-- Location 3: near SE Division / Hawthorne (45.5043, -122.6315)
+INSERT INTO physical_locations (
+  id, resource_id, address, city, state, zip_code,
+  neighborhood, latitude, longitude, phone_number,
+  verification_status, created_by
+) VALUES (
+  location_3_id,
+  resource_3_id,
+  '3355 SE Division St',
+  'Portland',
+  'OR',
+  '97202',
+  'Division',
+  45.5043,
+  -122.6315,
+  '(503) 555-0303',
+  'approved',
+  admin_id
+);
+
 -- ============================================================
 -- RESOURCE HOURS
 -- ============================================================
@@ -183,6 +204,15 @@ VALUES
   (location_2_id, 'thursday',  '11:00', '13:00'),
   (location_2_id, 'friday',    '11:00', '13:00'),
   (location_2_id, 'saturday',  '11:00', '13:00');
+
+-- Coupon Program 3: Mon-Fri 10am-5pm
+INSERT INTO resource_hours (physical_location_id, day, opens_at, closes_at)
+VALUES
+  (location_3_id, 'monday',    '10:00', '17:00'),
+  (location_3_id, 'tuesday',   '10:00', '17:00'),
+  (location_3_id, 'wednesday', '10:00', '17:00'),
+  (location_3_id, 'thursday',  '10:00', '17:00'),
+  (location_3_id, 'friday',    '10:00', '17:00');
 
 -- ============================================================
 -- ONLINE ACCESS (resource 3 only)
