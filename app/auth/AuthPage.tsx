@@ -148,7 +148,7 @@ function ResetPasswordForm({ onBack }: { onBack: () => void }) {
       {status === 'success' && (
         <div
           role="status"
-          className="mb-4 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-700 dark:text-green-400"
+          className="mb-4 rounded-lg border px-4 py-3 text-sm"
         >
           {RESET_SUCCESS_MESSAGE}
         </div>

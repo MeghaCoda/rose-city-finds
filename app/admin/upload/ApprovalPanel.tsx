@@ -96,7 +96,7 @@ function LocationCard({
             <button
               onClick={() => onAction(loc.id, 'approved')}
               disabled={loading}
-              className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+              className="text-xs px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50"
             >
               {APPROVE_LABEL}
             </button>
@@ -116,8 +116,8 @@ function LocationCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    pending: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400',
-    approved: 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400',
+    pending: '',
+    approved: '',
     rejected: 'bg-destructive/10 border-destructive/30 text-destructive',
   };
   const cls = styles[status] ?? styles.pending;
@@ -214,7 +214,6 @@ function ResourceCard({
           size="sm"
           onClick={() => onResourceAction(item.id, 'approved')}
           disabled={resourceLoading}
-          className="bg-green-600 hover:bg-green-700 text-white"
         >
           {resourceLoading ? SAVING_LABEL : APPROVE_RESOURCE_LABEL}
         </Button>

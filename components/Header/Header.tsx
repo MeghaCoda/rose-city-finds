@@ -7,10 +7,10 @@ export async function Header() {
   const isSignedIn = !!cookieStore.get('auth_token')?.value;
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+    <header className="flex items-center justify-between px-6 py-4 bg-primary">
       <div>
-        <p className="font-semibold leading-tight">Food Map</p>
-        <p className="text-sm text-muted-foreground leading-tight">
+        <p className="font-semibold leading-tight text-[#F0F2F8]">Rose City Finds</p>
+        <p className="text-sm text-teal leading-tight">
           Free and Discounted Food near Portland, OR
         </p>
       </div>
@@ -20,7 +20,7 @@ export async function Header() {
         ) : (
           <Link
             href="/auth"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+            className="text-sm text-teal hover:text-[#F0F2F8] transition-colors underline underline-offset-4"
           >
             Sign in
           </Link>

@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
-import LocationMap from '@/components/LocationMap/LocationMap'
+import dynamic from 'next/dynamic'
+
+const LocationMap = dynamic(() => import('@/components/LocationMap/LocationMap'), { ssr: false })
 import type { ResourceWithLocation } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
 import { LIST_LABEL, MAP_LABEL, LOADING_RESOURCES } from './constants'
@@ -45,7 +47,7 @@ export function MapResultsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 bg-surface-0">
       {/* Mobile-only: List/Map segmented toggle */}
       <div className="flex md:hidden border-b border-border">
         <button
@@ -53,8 +55,8 @@ export function MapResultsPage() {
           onClick={() => setView('list')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors border-b-2 ${
             view === 'list'
-              ? 'text-foreground border-foreground'
-              : 'text-muted-foreground border-transparent'
+              ? 'text-text-primary border-text-primary'
+              : 'text-text-muted'
           }`}
         >
           <IconList size={15} stroke={1.5} />
@@ -65,8 +67,8 @@ export function MapResultsPage() {
           onClick={() => setView('map')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors border-b-2 ${
             view === 'map'
-              ? 'text-foreground border-foreground'
-              : 'text-muted-foreground border-transparent'
+              ? 'text-text-primary border-text-primary'
+              : 'text-text-muted'
           }`}
         >
           <IconMap2 size={15} stroke={1.5} />
@@ -85,8 +87,8 @@ export function MapResultsPage() {
               onClick={() => toggleChip(chip.key, chip.value)}
               className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
                 active
-                  ? 'bg-[#2B5CA8] border-[#2B5CA8] text-white'
-                  : 'bg-background border-border text-foreground hover:border-[#2B5CA8]'
+                  ? 'bg-primary border-primary'
+                  : 'bg-surface-1 border-border text-text-secondary hover:border-primary'
               }`}
             >
               {chip.label}
@@ -102,7 +104,7 @@ export function MapResultsPage() {
           className={`${view === 'list' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-80 md:flex-shrink-0 overflow-y-auto md:border-r md:border-border`}
         >
           {locations.length === 0 && (
-            <p className="px-4 py-8 text-sm text-muted-foreground text-center">
+            <p className="px-4 py-8 text-sm text-text-muted text-center">
               {LOADING_RESOURCES}
             </p>
           )}
@@ -112,17 +114,17 @@ export function MapResultsPage() {
               onMouseEnter={() => setSelectedId(item.id)}
               onMouseLeave={() => setSelectedId(null)}
               onClick={() => setSelectedId(item.id)}
-              className={`px-4 py-3 border-b border-border cursor-pointer transition-colors ${
+              className={`px-4 py-3 border-b border-border cursor-pointer transition-colors bg-surface-1 ${
                 selectedId === item.id ? 'bg-accent' : 'hover:bg-accent/50'
               }`}
             >
-              <p className="font-medium text-sm leading-tight">{item.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="font-medium text-sm leading-tight text-text-primary">{item.name}</p>
+              <p className="text-xs text-text-muted mt-0.5">
                 {item.physical_location.address}
                 {item.physical_location.address2 && `, ${item.physical_location.address2}`}
               </p>
               {item.description && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                <p className="text-xs text-text-muted mt-1 line-clamp-2">
                   {item.description}
                 </p>
               )}

@@ -215,7 +215,7 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
   return (
     <div className="flex flex-col gap-6">
       {submitResult?.success && (
-        <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+        <div className="rounded-lg border px-4 py-3 text-sm">
           {OFFER_CREATED_SUCCESS}
         </div>
       )}

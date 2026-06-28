@@ -174,7 +174,7 @@ export function ModifyOfferPanel({ onBack }: { onBack: () => void }) {
       {editState && offerDetail && (
         <div className="flex flex-col gap-6">
           {saveResult?.success && (
-            <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+            <div className="rounded-lg border px-4 py-3 text-sm">
               {OFFER_UPDATED_SUCCESS}
             </div>
           )}
