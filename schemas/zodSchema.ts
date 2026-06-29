@@ -17,6 +17,7 @@ export const BenefitCategorySchema = z.enum([
   "coupon",
   "free_breakfast",
   "other",
+  "military_discount",
 ]);
 
 export const SubmissionStatusSchema = z.enum(["pending", "approved", "rejected"]);
