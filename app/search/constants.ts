@@ -30,4 +30,5 @@ export const ELIGIBILITY_OPTIONS = [
   { value: 'children', label: 'Children' },
   { value: 'income_restricted', label: 'Income restricted' },
   { value: 'residency_required', label: 'Residency required' },
+  { value: 'military_discount', label: 'Military' },
 ];
