@@ -58,21 +58,24 @@ function GeolocationController() {
 
   useEffect(() => {
     if (!navigator.geolocation) return;
+    let active = true;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        map.flyTo(
-          [pos.coords.latitude, pos.coords.longitude],
-          USER_ZOOM,
-          { animate: true, duration: 1.5 }
-        );
+        if (!active) return;
+        const { latitude, longitude } = pos.coords;
+        if (!isFinite(latitude) || !isFinite(longitude)) return;
+        map.flyTo([latitude, longitude], USER_ZOOM, { animate: true, duration: 1.5 });
       },
       (err) => {
         console.warn("Geolocation unavailable:", err.message);
       },
       { timeout: 8000, maximumAge: 60_000 }
     );
-  }, [map]);
+
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }

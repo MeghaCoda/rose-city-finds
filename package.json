@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "curl -sf http://127.0.0.1:54321/auth/v1/health -o /dev/null || (echo 'Supabase is not running. Start it with: npx supabase start' && exit 1)",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

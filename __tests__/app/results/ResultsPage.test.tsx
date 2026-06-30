@@ -1,5 +1,5 @@
 /**
- * Tests for /map (MapResultsPage)
+ * Tests for /results (ResultsPage)
  *
  * Mock data mirrors the seed.sql dataset so every filter chip, benefit category,
  * and data edge-case that exists in development is exercised here.
@@ -21,7 +21,7 @@ const mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
   useRouter: () => ({ push: mockPush }),
-  usePathname: () => '/map',
+  usePathname: () => '/results',
 }))
 
 // ─── React-query mock ─────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ vi.mock('@/components/LocationMap/LocationMap', () => ({
   ),
 }))
 
-import { MapResultsPage } from '@/app/map/MapResultsPage'
+import { ResultsPage } from '@/app/results/ResultsPage'
 
 // ─── Seed-derived mock data ───────────────────────────────────────────────────
 //
@@ -466,13 +466,13 @@ beforeEach(() => {
 describe('empty / loading state', () => {
   it('shows loading text when the query returns no data', () => {
     mockLocations([])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('Loading resources…')).toBeInTheDocument()
   })
 
   it('does not show loading text when results are present', () => {
     mockLocations([r1_location1])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.queryByText('Loading resources…')).not.toBeInTheDocument()
   })
 })
@@ -481,7 +481,7 @@ describe('empty / loading state', () => {
 
 describe('filter chips', () => {
   it('renders all 7 filter chips', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     const labels = ['Free', 'Discount', 'Prepared', 'Groceries', 'Restaurant', 'Pickup', 'Delivery']
     for (const label of labels) {
       expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument()
@@ -489,7 +489,7 @@ describe('filter chips', () => {
   })
 
   it('no chip is selected by default', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // A selected chip gains a "✕" close indicator.
     // When no chip is selected none of the chips contain a visible ✕.
     const closeIcons = screen.queryAllByText('✕')
@@ -501,7 +501,7 @@ describe('filter chips', () => {
 
   it('chip appears selected when its param is in the URL', () => {
     setSearchParams({ price: 'free' })
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // The selected chip has opacity-0 removed from its ✕
     const freeChip = screen.getByRole('button', { name: /free/i })
     const closeIcon = within(freeChip).queryByText('✕')
@@ -509,21 +509,21 @@ describe('filter chips', () => {
   })
 
   it('clicking a chip adds its param to the URL', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    expect(mockPush).toHaveBeenCalledWith('/map?price=free')
+    expect(mockPush).toHaveBeenCalledWith('/results?price=free')
   })
 
   it('clicking an active chip removes its param from the URL', () => {
     setSearchParams({ price: 'free' })
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    expect(mockPush).toHaveBeenCalledWith('/map?')
+    expect(mockPush).toHaveBeenCalledWith('/results?')
   })
 
   it('multiple chips with the same key accumulate comma-separated values', () => {
     setSearchParams({ price: 'free' })
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /discount/i }))
     const call = mockPush.mock.calls[0][0] as string
     const params = new URLSearchParams(call.split('?')[1])
@@ -533,7 +533,7 @@ describe('filter chips', () => {
   })
 
   it('chips with different keys are stored under separate params', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /^free/i }))
     const firstCall = mockPush.mock.calls[0][0] as string
     // Simulate the URL update by setting searchParams before next render
@@ -552,7 +552,7 @@ describe('filter chips', () => {
 describe('list rendering', () => {
   it('renders a list item for each location in the dataset', () => {
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // 14 items (r1 appears twice — once per physical location)
     const items = screen.getAllByRole('paragraph').filter((el) => {
       // ResultListItem renders resource name in the first <p> (font-medium)
@@ -563,7 +563,7 @@ describe('list rendering', () => {
 
   it('renders each resource name', () => {
     mockLocations([r1_location1, r2_discounted, r9_breakfast])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
     expect(screen.getByText('Division Street Discount Grocer')).toBeInTheDocument()
     expect(screen.getByText('St. Johns Free Breakfast Club')).toBeInTheDocument()
@@ -571,33 +571,33 @@ describe('list rendering', () => {
 
   it('renders address without address2 when address2 is null', () => {
     mockLocations([r1_location2]) // pl2: no address2
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('6710 SE Foster Rd')).toBeInTheDocument()
     expect(screen.queryByText(/null/i)).not.toBeInTheDocument()
   })
 
   it('renders address with address2 when both are present', () => {
     mockLocations([r1_location1]) // pl1: address2 = 'Suite 101'
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('3425 SE Hawthorne Blvd, Suite 101')).toBeInTheDocument()
   })
 
   it('renders address2 as room number (PSU campus address)', () => {
     mockLocations([r4_student]) // address2 = 'Smith Memorial Union Rm 120'
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('1825 SW Broadway, Smith Memorial Union Rm 120')).toBeInTheDocument()
   })
 
   it('renders description when present', () => {
     mockLocations([r6_kids])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText(/children under 12 eat free/i)).toBeInTheDocument()
   })
 
   it('does not render a description element when description is null', () => {
     const noDesc = makeResource(R1_ID, 'No Description Resource', PL1_ID, { description: null })
     mockLocations([noDesc])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Only the name and address paragraphs should render, not a third one
     const nameEl = screen.getByText('No Description Resource')
     const container = nameEl.closest('[class*="px-4"]')!
@@ -607,7 +607,7 @@ describe('list rendering', () => {
 
   it('passes data to the LocationMap component', () => {
     mockLocations([r1_location1, r2_discounted])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // LocationMap is hidden on mobile list view; we check data attribute count
     const mapEl = screen.getByTestId('location-map')
     expect(mapEl.getAttribute('data-count')).toBe('2')
@@ -620,7 +620,7 @@ describe('edge cases from seed data', () => {
   it('renders both physical locations for a resource that has two locations', () => {
     // r1 has pl1 (Hawthorne) and pl2 (Foster Rd) — both should appear
     mockLocations([r1_location1, r1_location2])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('3425 SE Hawthorne Blvd, Suite 101')).toBeInTheDocument()
     expect(screen.getByText('6710 SE Foster Rd')).toBeInTheDocument()
   })
@@ -628,34 +628,34 @@ describe('edge cases from seed data', () => {
   it('handles a resource with no phone number without crashing', () => {
     // r1 location 2 has phone_number: null
     mockLocations([r1_location2])
-    expect(() => render(<MapResultsPage />)).not.toThrow()
+    expect(() => render(<ResultsPage />)).not.toThrow()
   })
 
   it('handles a location with null lat/lon (cannot show map pin)', () => {
     // r10 Kenton Hub has latitude: null, longitude: null
     mockLocations([r10_other])
-    expect(() => render(<MapResultsPage />)).not.toThrow()
+    expect(() => render(<ResultsPage />)).not.toThrow()
     expect(screen.getByText('Kenton Community Services Hub')).toBeInTheDocument()
   })
 
   it('renders a resource with multiple benefits in its array', () => {
     // r3 has ['snap_accepted', 'discounted_food']
     mockLocations([r3_snap])
-    expect(() => render(<MapResultsPage />)).not.toThrow()
+    expect(() => render(<ResultsPage />)).not.toThrow()
     expect(screen.getByText('Lents SNAP Market')).toBeInTheDocument()
   })
 
   it('renders a resource with a future expires_at without crashing', () => {
     // r4 PSU Collective: expires_at = '2027-06-15' (future)
     mockLocations([r4_student])
-    expect(() => render(<MapResultsPage />)).not.toThrow()
+    expect(() => render(<ResultsPage />)).not.toThrow()
     expect(screen.getByText('PSU Student Food Collective')).toBeInTheDocument()
   })
 
   it('renders hours with valid_from/valid_until bounds (seasonal hours) without crashing', () => {
     // r4 and r1 location 2 have date-bounded hours
     mockLocations([r4_student, r1_location2])
-    expect(() => render(<MapResultsPage />)).not.toThrow()
+    expect(() => render(<ResultsPage />)).not.toThrow()
   })
 
   // ── GAP: inactive resources leak through ────────────────────────────────────
@@ -665,7 +665,7 @@ describe('edge cases from seed data', () => {
   // location still appears in the list and map.
   it('does not show resources where is_active is false', () => {
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // GAP: this assertion currently FAILS because the inactive resource leaks through
     expect(screen.queryByText('Pearl District Meal Depot')).not.toBeInTheDocument()
   })
@@ -676,7 +676,7 @@ describe('edge cases from seed data', () => {
   // still appears in results even though the program has ended.
   it('does not show resources whose expires_at is in the past', () => {
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // GAP: this assertion currently FAILS because the expired resource leaks through
     expect(screen.queryByText('Concordia Summer Lunch Program')).not.toBeInTheDocument()
   })
@@ -686,7 +686,7 @@ describe('edge cases from seed data', () => {
 //
 // GAP: All tests in this describe block currently FAIL.
 //
-// The MapResultsPage reads filter params from the URL (via useSearchParams) and
+// The ResultsPage reads filter params from the URL (via useSearchParams) and
 // toggles chips, but it NEVER applies those params to filter the `locations` array.
 // Every chip state shows the full unfiltered list.
 //
@@ -700,7 +700,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('price=free shows only free_food and free_breakfast resources', () => {
     setSearchParams({ price: 'free' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r1 (free_food), r4 (free_food+student), r5 (free_food+senior),
     //           r9 (free_breakfast) — NOT r2 (discount), r7 (bogo), etc.
     expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
@@ -713,7 +713,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('price=discount shows only discounted resources', () => {
     setSearchParams({ price: 'discount' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r2 (discounted_food), r3 (snap_accepted+discounted), r4 (student_discount),
     //           r5 (senior_discount), r6 (kids_eat_free), r7 (bogo), r8 (coupon)
     expect(screen.getByText('Division Street Discount Grocer')).toBeInTheDocument()
@@ -725,7 +725,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('price=free,discount (OR) shows both free and discounted resources', () => {
     setSearchParams({ price: 'free,discount' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
     expect(screen.getByText('Division Street Discount Grocer')).toBeInTheDocument()
     // GAP: "other" category only resource should still be excluded
@@ -735,7 +735,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('foodType=prepared shows resources serving prepared/hot food', () => {
     setSearchParams({ foodType: 'prepared' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r5 (senior dining — hot lunches), r6 (diner — kids eat free),
     //           r9 (free_breakfast — hot breakfast)
     expect(screen.getByText('Richmond Senior Dining Hall')).toBeInTheDocument()
@@ -747,7 +747,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('foodType=groceries shows pantry / market / grocery resources', () => {
     setSearchParams({ foodType: 'groceries' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r1 (pantry), r2 (discount grocer), r3 (SNAP market), r4 (PSU pantry).
     // r1 appears twice (two physical locations), so use getAllByText.
     expect(screen.getAllByText('Hawthorne Community Pantry')).toHaveLength(2)
@@ -760,7 +760,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('foodType=restaurant shows restaurant / diner resources', () => {
     setSearchParams({ foodType: 'restaurant' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r6 (diner — kids_eat_free), r7 (bakery — bogo)
     expect(screen.getByText('Sellwood Kids Eat Free Diner')).toBeInTheDocument()
     expect(screen.getByText('Alberta BOGO Bakery')).toBeInTheDocument()
@@ -771,7 +771,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('accessType=pickup shows resources with a physical pickup location', () => {
     setSearchParams({ accessType: 'pickup' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // All seed locations with physical_locations should show
     expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
     expect(screen.getByText('Kenton Community Services Hub')).toBeInTheDocument()
@@ -781,7 +781,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     setSearchParams({ accessType: 'delivery' })
     // No seed resources have delivery — result should be empty
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // GAP: no delivery resources in seed data; list should be empty
     // This also surfaces that online-only resources (r15) are invisible — they
     // have no physical location and are not returned by /api/locations at all.
@@ -794,7 +794,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('cross-key filter (price=free AND foodType=groceries) narrows results', () => {
     setSearchParams({ price: 'free', foodType: 'groceries' })
     mockLocations(ALL_SEED_LOCATIONS)
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // Expected: r1 (free pantry groceries), r4 (free student pantry)
     expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
     // GAP: bogo bakery is not free AND groceries
@@ -807,7 +807,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     // snap_accepted conceptually belongs under "discount" in the UI
     setSearchParams({ price: 'discount' })
     mockLocations([r3_snap])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByText('Lents SNAP Market')).toBeInTheDocument()
   })
 
@@ -819,7 +819,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
   it('price=military_discount shows only military-discount resources', () => {
     setSearchParams({ price: 'military_discount' })
     mockLocations([r16_military, r2_discounted, r9_breakfast])
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     // GAP: filtering not yet implemented — non-military resources still appear
     expect(screen.getByText('Columbia Gorge Veterans Market')).toBeInTheDocument()
     expect(screen.queryByText('Division Street Discount Grocer')).not.toBeInTheDocument()
@@ -831,13 +831,13 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
 
 describe('List / Map view toggle', () => {
   it('shows "List" and "Map" tab buttons', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^map$/i })).toBeInTheDocument()
   })
 
   it('renders the location map element', () => {
-    render(<MapResultsPage />)
+    render(<ResultsPage />)
     expect(screen.getByTestId('location-map')).toBeInTheDocument()
   })
 })
@@ -845,11 +845,11 @@ describe('List / Map view toggle', () => {
 // ─── UI GAPS SUMMARY ──────────────────────────────────────────────────────────
 //
 // The following gaps were identified by cross-referencing the seed data against
-// the current MapResultsPage implementation. Tests that expose gaps are marked
+// the current ResultsPage implementation. Tests that expose gaps are marked
 // above with a "GAP:" comment and are expected to fail with the current code.
 //
 // 1. FILTERING NOT IMPLEMENTED
-//    MapResultsPage reads URL params (price, foodType, accessType) and toggles
+//    ResultsPage reads URL params (price, foodType, accessType) and toggles
 //    chips, but the `locations` array from useQuery is never filtered.
 //    All results display regardless of active filters.
 //

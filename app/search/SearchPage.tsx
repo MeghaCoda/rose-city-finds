@@ -27,7 +27,7 @@ export default function SearchPage() {
 
   function handleSubmit() {
     const params = toParams()
-    router.push(`${ROUTES.MAP}?${params.toString()}`)
+    router.push(`${ROUTES.RESULTS}?${params.toString()}`)
   }
 
   return (

@@ -5,14 +5,14 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
-
-const LocationMap = dynamic(() => import('@/components/LocationMap/LocationMap'), { ssr: false })
 import type { ResourceWithLocation } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
 import { TabBar } from '@/components/ui/TabBar'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { ResultListItem } from '@/components/ui/ResultListItem'
 import { LIST_LABEL, MAP_LABEL, LOADING_RESOURCES } from './constants'
+
+const LocationMap = dynamic(() => import('@/components/LocationMap/LocationMap'), { ssr: false })
 
 type View = 'list' | 'map'
 
@@ -21,7 +21,7 @@ const TABS = [
   { value: 'map',  label: MAP_LABEL,  icon: <IconMap2 size={15} stroke={1.5} /> },
 ] satisfies { value: string; label: string; icon: React.ReactNode }[]
 
-export function MapResultsPage() {
+export function ResultsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -30,7 +30,10 @@ export function MapResultsPage() {
 
   const { data: locations = [] } = useQuery<ResourceWithLocation[]>({
     queryKey: ['locations'],
-    queryFn: () => fetch(API_ROUTES.LOCATIONS).then((r) => r.json()),
+    queryFn: () => fetch(API_ROUTES.LOCATIONS).then((r) => {
+      if (!r.ok) throw new Error(`Failed to fetch locations: ${r.status}`);
+      return r.json();
+    }),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
@@ -90,7 +93,7 @@ export function MapResultsPage() {
           )}
           {locations.map((item) => (
             <ResultListItem
-              key={item.id}
+              key={item.physical_location.id}
               name={item.name}
               address={[item.physical_location.address, item.physical_location.address2].filter(Boolean).join(', ')}
               description={item.description ?? undefined}
