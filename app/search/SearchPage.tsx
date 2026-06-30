@@ -19,7 +19,7 @@ import {
 
 export default function SearchPage() {
   const router = useRouter()
-  const { price, foodType, accessType, eligibility, toggle, toParams } = useSearchFilters()
+  const { price, foodType, accessType, eligibility, toggle, setFilter, toParams } = useSearchFilters()
 
   function handleToggle(key: FilterKey, value: string) {
     toggle(key, value)
@@ -38,7 +38,8 @@ export default function SearchPage() {
       return
     }
     if (anyoneSelected) {
-      toggle('eligibility', 'anyone')
+      setFilter('eligibility', [value])
+      return
     }
     toggle('eligibility', value)
   }
@@ -104,6 +105,11 @@ export default function SearchPage() {
               label={TOGGLE_LABELS.DELIVERY}
               selected={accessType.includes('delivery')}
               onClick={() => handleToggle('accessType', 'delivery')}
+            />
+            <FilterChip
+              label={TOGGLE_LABELS.DINE_IN}
+              selected={accessType.includes('dine_in')}
+              onClick={() => handleToggle('accessType', 'dine_in')}
             />
           </div>
         </FilterSection>

@@ -62,7 +62,8 @@ function useToggleSet(initial: string[] = []) {
     })
   }
   function clear() { setSet(new Set()) }
-  return { has: (v: string) => set.has(v), toggle, clear, arr: Array.from(set) }
+  function replace(values: string[]) { setSet(new Set(values)) }
+  return { has: (v: string) => set.has(v), toggle, clear, replace, arr: Array.from(set) }
 }
 
 // ─── Color swatch ──────────────────────────────────────────────────────────────
@@ -102,6 +103,16 @@ export default function DesignSystemPage() {
       eligibility: drawerEligibility,
     }
     map[key].toggle(value)
+  }
+
+  function handleDrawerSetFilter(key: FilterKey, values: string[]) {
+    const map = {
+      price: drawerPrice,
+      foodType: drawerFoodType,
+      accessType: drawerAccessType,
+      eligibility: drawerEligibility,
+    }
+    map[key].replace(values)
   }
 
   function handleDrawerClear() {
@@ -492,6 +503,7 @@ export default function DesignSystemPage() {
         accessType={drawerAccessType.arr}
         eligibility={drawerEligibility.arr}
         onToggle={handleDrawerToggle}
+        onSetFilter={handleDrawerSetFilter}
         onSearch={() => setDrawerOpen(false)}
         onClearFilters={handleDrawerClear}
       />

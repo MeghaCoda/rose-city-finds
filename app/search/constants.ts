@@ -20,6 +20,7 @@ export const TOGGLE_LABELS = {
   RESTAURANT: 'Restaurant',
   PICKUP: 'Pickup',
   DELIVERY: 'Delivery',
+  DINE_IN: 'Dine in',
 } as const;
 
 export const ELIGIBILITY_OPTIONS = [

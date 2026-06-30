@@ -21,6 +21,7 @@ const FOOD_TYPE_OPTIONS = [
 const ACCESS_OPTIONS = [
   { value: 'pickup',   label: 'Pickup' },
   { value: 'delivery', label: 'Delivery' },
+  { value: 'dine_in',  label: 'Dine in' },
 ]
 
 const ELIGIBILITY_OPTIONS = [
@@ -45,6 +46,7 @@ export interface FilterDrawerProps {
   accessType: string[]
   eligibility: string[]
   onToggle: (key: FilterKey, value: string) => void
+  onSetFilter: (key: FilterKey, values: string[]) => void
   onSearch: () => void
   onClearFilters: () => void
   className?: string
@@ -73,6 +75,7 @@ export function FilterDrawer({
   accessType,
   eligibility,
   onToggle,
+  onSetFilter,
   onSearch,
   onClearFilters,
   className,
@@ -87,7 +90,7 @@ export function FilterDrawer({
 
   function handleEligibilityToggle(value: string) {
     if (value === 'anyone') { onToggle('eligibility', 'anyone'); return }
-    if (anyoneSelected) onToggle('eligibility', 'anyone')
+    if (anyoneSelected) { onSetFilter('eligibility', [value]); return }
     onToggle('eligibility', value)
   }
 

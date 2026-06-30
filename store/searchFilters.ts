@@ -8,15 +8,16 @@ interface SearchFiltersState {
   accessType: string[]
   eligibility: string[]
   toggle: (key: FilterKey, value: string) => void
+  setFilter: (key: FilterKey, values: string[]) => void
   reset: () => void
   toParams: () => URLSearchParams
 }
 
 const defaultFilters = {
-  price: [] as string[],
-  foodType: [] as string[],
-  accessType: [] as string[],
-  eligibility: [] as string[],
+  price: ['free'] as string[],
+  foodType: ['prepared', 'groceries', 'restaurant'] as string[],
+  accessType: ['pickup', 'delivery', 'dine_in'] as string[],
+  eligibility: ['anyone'] as string[],
 }
 
 export const useSearchFilters = create<SearchFiltersState>((set, get) => ({
@@ -30,6 +31,9 @@ export const useSearchFilters = create<SearchFiltersState>((set, get) => ({
           : [...current, value],
       }
     })
+  },
+  setFilter(key, values) {
+    set({ [key]: values })
   },
   reset() {
     set(defaultFilters)
