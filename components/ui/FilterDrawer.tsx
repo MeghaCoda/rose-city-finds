@@ -3,54 +3,13 @@
 import { IconX } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { FilterChip } from './FilterChip'
-import type { FilterKey } from '@/store/searchFilters'
-
-// ─── Static option lists ────────────────────────────────────────────────────────
-
-const PRICE_OPTIONS: { value: string; label: string; selectedClassName?: string }[] = [
-  { value: 'free',     label: 'Free',     selectedClassName: 'bg-success border-success text-text-inverse' },
-  { value: 'discount', label: 'Discount' },
-]
-
-const FOOD_TYPE_OPTIONS = [
-  { value: 'prepared',   label: 'Prepared' },
-  { value: 'groceries',  label: 'Groceries' },
-  { value: 'restaurant', label: 'Restaurant' },
-]
-
-const ACCESS_OPTIONS = [
-  { value: 'pickup',   label: 'Pickup' },
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'dine_in',  label: 'Dine in' },
-]
-
-const ELIGIBILITY_OPTIONS = [
-  { value: 'anyone',             label: 'Anyone' },
-  { value: 'honor_system',       label: 'Honor system' },
-  { value: 'snap_ebt',           label: 'SNAP / EBT' },
-  { value: 'wic',                label: 'WIC' },
-  { value: 'seniors',            label: 'Seniors (65+)' },
-  { value: 'children',           label: 'Children' },
-  { value: 'income_restricted',  label: 'Income restricted' },
-  { value: 'residency_required', label: 'Residency required' },
-  { value: 'military_discount',  label: 'Military' },
-]
-
-// ─── Props ──────────────────────────────────────────────────────────────────────
-
-export interface FilterDrawerProps {
-  open: boolean
-  onClose: () => void
-  price: string[]
-  foodType: string[]
-  accessType: string[]
-  eligibility: string[]
-  onToggle: (key: FilterKey, value: string) => void
-  onSetFilter: (key: FilterKey, values: string[]) => void
-  onSearch: () => void
-  onClearFilters: () => void
-  className?: string
-}
+import {
+  useSearchFilters,
+  PRICE_OPTIONS,
+  FOOD_TYPE_OPTIONS,
+  ACCESS_OPTIONS,
+  ELIGIBILITY_OPTIONS,
+} from '@/store/searchFilters'
 
 // ─── Sub-component ──────────────────────────────────────────────────────────────
 
@@ -65,34 +24,32 @@ function FilterGroup({ label, children }: { label: string; children: React.React
   )
 }
 
+// ─── Props ──────────────────────────────────────────────────────────────────────
+
+export interface FilterDrawerProps {
+  open: boolean
+  onClose: () => void
+  onSearch: () => void
+  onClearFilters: () => void
+  className?: string
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 export function FilterDrawer({
   open,
   onClose,
-  price,
-  foodType,
-  accessType,
-  eligibility,
-  onToggle,
-  onSetFilter,
   onSearch,
   onClearFilters,
   className,
 }: FilterDrawerProps) {
-  const anyoneSelected = eligibility.includes('anyone')
+  const { price, foodType, accessType, eligibility, toggle, toggleEligibility } = useSearchFilters()
 
   const totalActive =
     price.length +
     foodType.length +
     accessType.length +
     eligibility.filter((v) => v !== 'anyone').length
-
-  function handleEligibilityToggle(value: string) {
-    if (value === 'anyone') { onToggle('eligibility', 'anyone'); return }
-    if (anyoneSelected) { onSetFilter('eligibility', [value]); return }
-    onToggle('eligibility', value)
-  }
 
   if (!open) return null
 
@@ -134,7 +91,7 @@ export function FilterDrawer({
                 key={value}
                 label={label}
                 selected={price.includes(value)}
-                onClick={() => onToggle('price', value)}
+                onClick={() => toggle('price', value)}
                 selectedClassName={selectedClassName}
                 compact
               />
@@ -149,7 +106,7 @@ export function FilterDrawer({
                 key={value}
                 label={label}
                 selected={foodType.includes(value)}
-                onClick={() => onToggle('foodType', value)}
+                onClick={() => toggle('foodType', value)}
                 compact
               />
             ))}
@@ -163,7 +120,7 @@ export function FilterDrawer({
                 key={value}
                 label={label}
                 selected={accessType.includes(value)}
-                onClick={() => onToggle('accessType', value)}
+                onClick={() => toggle('accessType', value)}
                 compact
               />
             ))}
@@ -177,7 +134,7 @@ export function FilterDrawer({
                 key={value}
                 label={label}
                 selected={eligibility.includes(value)}
-                onClick={() => handleEligibilityToggle(value)}
+                onClick={() => toggleEligibility(value)}
                 compact
               />
             ))}

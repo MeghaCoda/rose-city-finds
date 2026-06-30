@@ -10,7 +10,7 @@ import { TabBar } from '@/components/ui/TabBar'
 import { ResultListItem } from '@/components/ui/ResultListItem'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
-import type { FilterKey } from '@/store/searchFilters'
+import { useSearchFilters } from '@/store/searchFilters'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,39 +88,9 @@ export default function DesignSystemPage() {
   const [tab, setTab] = useState('list')
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
 
-  // FilterDrawer demo state
+  // FilterDrawer demo
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const drawerPrice = useToggleSet()
-  const drawerFoodType = useToggleSet()
-  const drawerAccessType = useToggleSet()
-  const drawerEligibility = useToggleSet(['anyone'])
-
-  function handleDrawerToggle(key: FilterKey, value: string) {
-    const map = {
-      price: drawerPrice,
-      foodType: drawerFoodType,
-      accessType: drawerAccessType,
-      eligibility: drawerEligibility,
-    }
-    map[key].toggle(value)
-  }
-
-  function handleDrawerSetFilter(key: FilterKey, values: string[]) {
-    const map = {
-      price: drawerPrice,
-      foodType: drawerFoodType,
-      accessType: drawerAccessType,
-      eligibility: drawerEligibility,
-    }
-    map[key].replace(values)
-  }
-
-  function handleDrawerClear() {
-    drawerPrice.clear()
-    drawerFoodType.clear()
-    drawerAccessType.clear()
-    drawerEligibility.clear()
-  }
+  const { reset: resetFilters } = useSearchFilters()
 
   const anyoneSelected = eligibility.has('anyone')
 
@@ -498,14 +468,8 @@ export default function DesignSystemPage() {
       <FilterDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        price={drawerPrice.arr}
-        foodType={drawerFoodType.arr}
-        accessType={drawerAccessType.arr}
-        eligibility={drawerEligibility.arr}
-        onToggle={handleDrawerToggle}
-        onSetFilter={handleDrawerSetFilter}
         onSearch={() => setDrawerOpen(false)}
-        onClearFilters={handleDrawerClear}
+        onClearFilters={resetFilters}
       />
     </div>
   )
