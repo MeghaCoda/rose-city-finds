@@ -332,8 +332,8 @@ INSERT INTO resources (
 -- ============================================================
 -- PHYSICAL LOCATIONS
 -- Covers: address2 populated vs NULL, phone_number populated vs NULL,
---         neighborhood populated vs NULL, lat/lon populated vs NULL,
---         notes populated vs NULL, multiple locations for one resource,
+--         neighborhood populated vs NULL, notes populated vs NULL,
+--         multiple locations for one resource,
 --         pending verification_status, locations for inactive/expired resources.
 -- ============================================================
 
