@@ -10,6 +10,7 @@ import { TabBar } from '@/components/ui/TabBar'
 import { ResultListItem } from '@/components/ui/ResultListItem'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
+import { StandardButton } from '@/components/ui/StandardButton'
 import { useSearchFilters } from '@/store/searchFilters'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,6 +69,45 @@ function useToggleSet(initial: string[] = []) {
 
 // ─── Color swatch ──────────────────────────────────────────────────────────────
 
+// Tailwind's JIT scanner only emits CSS for utility classes it finds as literal
+// strings in source — bg/text are spelled out per-shade here (not built from
+// `${colorName}-${step}`) so bg-*/text-* actually exist for every shade below.
+const SHADES = {
+  primary: [
+    { step: 100, hex: '#F1F2FA', bg: 'bg-primary-100', text: 'text-primary-100' },
+    { step: 200, hex: '#DCDFF3', bg: 'bg-primary-200', text: 'text-primary-200' },
+    { step: 300, hex: '#C0C5EA', bg: 'bg-primary-300', text: 'text-primary-300' },
+    { step: 400, hex: '#8791D7', bg: 'bg-primary-400', text: 'text-primary-400' },
+    { step: 500, hex: '#4F5DC4', bg: 'bg-primary-500', text: 'text-primary-500' },
+    { step: 600, hex: '#4450A9', bg: 'bg-primary-600', text: 'text-primary-600' },
+    { step: 700, hex: '#374189', bg: 'bg-primary-700', text: 'text-primary-700' },
+    { step: 800, hex: '#2B326A', bg: 'bg-primary-800', text: 'text-primary-800' },
+    { step: 900, hex: '#20254E', bg: 'bg-primary-900', text: 'text-primary-900' },
+  ],
+  secondary: [
+    { step: 100, hex: '#F9F7FC', bg: 'bg-secondary-100', text: 'text-secondary-100' },
+    { step: 200, hex: '#F0EBF8', bg: 'bg-secondary-200', text: 'text-secondary-200' },
+    { step: 300, hex: '#E4DCF2', bg: 'bg-secondary-300', text: 'text-secondary-300' },
+    { step: 400, hex: '#CBBCE7', bg: 'bg-secondary-400', text: 'text-secondary-400' },
+    { step: 500, hex: '#B39DDB', bg: 'bg-secondary-500', text: 'text-secondary-500' },
+    { step: 600, hex: '#9A87BC', bg: 'bg-secondary-600', text: 'text-secondary-600' },
+    { step: 700, hex: '#7D6E99', bg: 'bg-secondary-700', text: 'text-secondary-700' },
+    { step: 800, hex: '#615576', bg: 'bg-secondary-800', text: 'text-secondary-800' },
+    { step: 900, hex: '#483F58', bg: 'bg-secondary-900', text: 'text-secondary-900' },
+  ],
+  accent: [
+    { step: 100, hex: '#F8F2FA', bg: 'bg-accent-100', text: 'text-accent-100' },
+    { step: 200, hex: '#EEDFF3', bg: 'bg-accent-200', text: 'text-accent-200' },
+    { step: 300, hex: '#E1C6EA', bg: 'bg-accent-300', text: 'text-accent-300' },
+    { step: 400, hex: '#C694D7', bg: 'bg-accent-400', text: 'text-accent-400' },
+    { step: 500, hex: '#AB61C4', bg: 'bg-accent-500', text: 'text-accent-500' },
+    { step: 600, hex: '#9353A9', bg: 'bg-accent-600', text: 'text-accent-600' },
+    { step: 700, hex: '#784489', bg: 'bg-accent-700', text: 'text-accent-700' },
+    { step: 800, hex: '#5C346A', bg: 'bg-accent-800', text: 'text-accent-800' },
+    { step: 900, hex: '#44274E', bg: 'bg-accent-900', text: 'text-accent-900' },
+  ],
+} as const
+
 function Swatch({ hex, name, token }: { hex: string; name: string; token: string }) {
   return (
     <Item>
@@ -75,6 +115,32 @@ function Swatch({ hex, name, token }: { hex: string; name: string; token: string
       <Label>{name}</Label>
       <Token>{token}</Token>
     </Item>
+  )
+}
+
+function ShadeColumn({
+  colorName,
+  shades,
+}: {
+  colorName: string
+  shades: ReadonlyArray<{ step: number; hex: string; bg: string; text: string }>
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 shrink-0">
+      {shades.map(({ step, bg, text }) => (
+        <div key={step} className="flex items-center gap-2">
+          <div className={`w-5 h-5 rounded-lg border border-black/8 shrink-0 flex items-center justify-center ${bg}`}>
+            <span className={`text-[10px] font-semibold ${text}`}>Aa</span>
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs text-text-muted">{colorName}-{step}</span>
+            <Token>{`--color-${colorName}-${step}`}</Token>
+            <Token>{` --${bg}`}</Token>
+            <Token>{`--${text}`}</Token>
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -149,6 +215,12 @@ export default function DesignSystemPage() {
           <Swatch hex="#EAB308" name="warning" token="--color-warning" />
           <Swatch hex="#C41E1E" name="error"   token="--color-error" />
         </Row>
+        <p className="text-xs font-semibold tracking-widest uppercase text-text-muted mb-2 mt-2">Shade scale</p>
+        <div className="flex gap-8 items-start overflow-x-auto pb-2">
+          <ShadeColumn colorName="primary" shades={SHADES.primary} />
+          <ShadeColumn colorName="secondary" shades={SHADES.secondary} />
+          <ShadeColumn colorName="accent" shades={SHADES.accent} />
+        </div>
       </Section>
 
       {/* ── Typography ────────────────────────────────────────────── */}
@@ -179,6 +251,35 @@ export default function DesignSystemPage() {
             <Token>11px / 600 / uppercase / 0.08em / --color-text-muted</Token>
           </Item>
         </div>
+      </Section>
+
+      {/* ── StandardButton ────────────────────────────────────────── */}
+      <Section
+        title="StandardButton"
+        note="Pill button in primary/secondary colors. solid = filled brand color with inverse text. light = subtle tinted fill with a brand-colored border and text."
+      >
+        <Row>
+          <Item>
+            <StandardButton color="primary" variant="solid">Primary</StandardButton>
+            <Label>Primary · solid</Label>
+            <Token>bg-primary border-primary text-text-inverse</Token>
+          </Item>
+          <Item>
+            <StandardButton color="primary" variant="light">Primary</StandardButton>
+            <Label>Primary · light</Label>
+            <Token>bg-primary-subtle border-primary text-primary</Token>
+          </Item>
+          <Item>
+            <StandardButton color="secondary" variant="solid">Secondary</StandardButton>
+            <Label>Secondary · solid</Label>
+            <Token>bg-secondary border-secondary text-text-inverse</Token>
+          </Item>
+          <Item>
+            <StandardButton color="secondary" variant="light">Secondary</StandardButton>
+            <Label>Secondary · light</Label>
+            <Token>bg-secondary-subtle border-secondary text-secondary</Token>
+          </Item>
+        </Row>
       </Section>
 
       {/* ── FilterChip ────────────────────────────────────────────── */}
@@ -422,13 +523,9 @@ export default function DesignSystemPage() {
         note="Full-screen overlay drawer with a two-column layout: category list on the left, filter options on the right. Footer has 'Clear filters' on the left and 'Search' on the right."
       >
         <AppBg>
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="px-5 py-2.5 rounded-full text-sm font-semibold text-text-inverse bg-primary hover:bg-primary-hover transition-colors"
-          >
+          <StandardButton onClick={() => setDrawerOpen(true)}>
             Open filter drawer
-          </button>
+          </StandardButton>
         </AppBg>
         <Row>
           <Item>

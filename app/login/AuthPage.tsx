@@ -27,6 +27,7 @@ import {
   SIGN_OUT_LABEL,
   SIGNING_OUT_LABEL,
 } from './constants';
+import { StandardButton } from '@/components/ui/StandardButton';
 
 type View = 'signin' | 'reset';
 
@@ -96,9 +97,9 @@ function SignInForm({ onForgotPassword }: { onForgotPassword: () => void }) {
           />
         </div>
 
-        <Button type="submit" disabled={isPending} className="mt-2">
+        <StandardButton type="submit" disabled={isPending} className="mt-2">
           {isPending ? SIGNING_IN_LABEL : SIGN_IN_LABEL}
-        </Button>
+        </StandardButton>
       </form>
 
       <button

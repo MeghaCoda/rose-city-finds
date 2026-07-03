@@ -8,13 +8,43 @@
   --color-primary-hover:     var(--color-primary-hover);
   --color-primary-subtle:    var(--color-primary-subtle);
 
+  --color-primary-100:       var(--color-primary-100);
+  --color-primary-200:       var(--color-primary-200);
+  --color-primary-300:       var(--color-primary-300);
+  --color-primary-400:       var(--color-primary-400);
+  --color-primary-500:       var(--color-primary-500);
+  --color-primary-600:       var(--color-primary-600);
+  --color-primary-700:       var(--color-primary-700);
+  --color-primary-800:       var(--color-primary-800);
+  --color-primary-900:       var(--color-primary-900);
+
   --color-secondary:         var(--color-secondary);
   --color-secondary-hover:   var(--color-secondary-hover);
   --color-secondary-subtle:  var(--color-secondary-subtle);
 
+  --color-secondary-100:     var(--color-secondary-100);
+  --color-secondary-200:     var(--color-secondary-200);
+  --color-secondary-300:     var(--color-secondary-300);
+  --color-secondary-400:     var(--color-secondary-400);
+  --color-secondary-500:     var(--color-secondary-500);
+  --color-secondary-600:     var(--color-secondary-600);
+  --color-secondary-700:     var(--color-secondary-700);
+  --color-secondary-800:     var(--color-secondary-800);
+  --color-secondary-900:     var(--color-secondary-900);
+
   --color-accent:            var(--color-accent);
   --color-accent-hover:      var(--color-accent-hover);
   --color-accent-subtle:     var(--color-accent-subtle);
+
+  --color-accent-100:        var(--color-accent-100);
+  --color-accent-200:        var(--color-accent-200);
+  --color-accent-300:        var(--color-accent-300);
+  --color-accent-400:        var(--color-accent-400);
+  --color-accent-500:        var(--color-accent-500);
+  --color-accent-600:        var(--color-accent-600);
+  --color-accent-700:        var(--color-accent-700);
+  --color-accent-800:        var(--color-accent-800);
+  --color-accent-900:        var(--color-accent-900);
 
   /* Surfaces */
   --color-background:        var(--color-background);
@@ -37,7 +67,9 @@
   --color-error-subtle:      var(--color-error-subtle);
 
   /* Typography */
-  --font-sans:               var(--font-sans);
+  --font-header:             var(--font-header);
+  --font-subheader:          var(--font-subheader);
+  --font-body:               var(--font-body);
   --font-mono:               var(--font-mono);
 
   /* Radius scale */
@@ -55,13 +87,44 @@
   --color-primary-hover:     #3D4AAF;   /* darkened for hover states */
   --color-primary-subtle:    #E4E7F8;   /* tinted surface for selected/active states */
 
+  /* Shade scale — 500 is the brand primary above, tints/shades computed from it */
+  --color-primary-100:       #F1F2FA;
+  --color-primary-200:       #DCDFF3;
+  --color-primary-300:       #C0C5EA;
+  --color-primary-400:       #8791D7;
+  --color-primary-500:       #4F5DC4;
+  --color-primary-600:       #4450A9;
+  --color-primary-700:       #374189;
+  --color-primary-800:       #2B326A;
+  --color-primary-900:       #20254E;
+
   --color-secondary:         #B39DDB;   /* soft lavender — secondary actions */
   --color-secondary-hover:   #9A82CC;
   --color-secondary-subtle:  #F0EBF9;
 
+  --color-secondary-100:     #F9F7FC;
+  --color-secondary-200:     #F0EBF8;
+  --color-secondary-300:     #E4DCF2;
+  --color-secondary-400:     #CBBCE7;
+  --color-secondary-500:     #B39DDB;
+  --color-secondary-600:     #9A87BC;
+  --color-secondary-700:     #7D6E99;
+  --color-secondary-800:     #615576;
+  --color-secondary-900:     #483F58;
+
   --color-accent:            #AB61C4;   /* medium purple — highlights, badges, tags */
   --color-accent-hover:      #9450AE;
   --color-accent-subtle:     #F5EAF9;
+
+  --color-accent-100:        #F8F2FA;
+  --color-accent-200:        #EEDFF3;
+  --color-accent-300:        #E1C6EA;
+  --color-accent-400:        #C694D7;
+  --color-accent-500:        #AB61C4;
+  --color-accent-600:        #9353A9;
+  --color-accent-700:        #784489;
+  --color-accent-800:        #5C346A;
+  --color-accent-900:        #44274E;
 
   /* ─── Surfaces ──────────────────────────────────────────── */
   --color-background:        #F0F2FA;   /* app background, blue-tinted off-white */
@@ -84,6 +147,9 @@
   --color-error:             #C41E1E;   /* closed, unavailable, error */
   --color-error-subtle:      #FAEAEA;
 
+  /* ─── Typography ────────────────────────────────────────── */
+  --font-body:               -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
   /* ─── Base ──────────────────────────────────────────────── */
   --radius-base:             0.625rem;
 }
@@ -93,10 +159,14 @@
     @apply border-border outline-primary/50;
   }
   body {
-    @apply bg-background text-text-primary;
+    @apply bg-background text-text-primary font-body;
   }
-  html {
-    @apply font-sans;
+  h1 {
+    @apply font-header;
+  }
+  h2,
+  h3 {
+    @apply font-subheader;
   }
   html,
   body {

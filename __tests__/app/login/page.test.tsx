@@ -15,19 +15,19 @@ vi.mock('@supabase/supabase-js', () => ({
   })),
 }))
 
-vi.mock('@/app/auth/AuthPage', () => ({
+vi.mock('@/app/login/AuthPage', () => ({
   AuthPage: ({ user }: { user: User | null }) => (
     <div data-testid="auth-page" data-signed-in={String(user !== null)} />
   ),
 }))
 
-import Page from '@/app/auth/page'
+import Page from '@/app/login/page'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('auth/page', () => {
+describe('login/page', () => {
   it('renders AuthPage with user=null when no auth cookie', async () => {
     mockGet.mockReturnValue(undefined)
     render(await Page())
