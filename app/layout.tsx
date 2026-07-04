@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist_Mono, Space_Grotesk, Libre_Franklin } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from './providers';
@@ -7,16 +7,23 @@ import { HeaderWrapper } from '@/components/Header/HeaderWrapper';
 import { Header } from '@/components/Header/Header';
 import { SITE_TITLE, SITE_DESCRIPTION } from '@/lib/constants';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-header',
+  weight: '500',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+const libreFranklin = Libre_Franklin({
+  variable: '--font-subheader',
+  weight: ['600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -32,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
+      className={cn("h-full", "antialiased", geistMono.variable, spaceGrotesk.variable, libreFranklin.variable)}
     >
       <body className="min-h-full flex flex-col h-full" suppressHydrationWarning>
         <HeaderWrapper><Header /></HeaderWrapper>

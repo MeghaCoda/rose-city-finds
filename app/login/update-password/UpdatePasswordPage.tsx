@@ -105,7 +105,7 @@ export function UpdatePasswordPage() {
           {tokenError}
         </div>
         <button
-          onClick={() => router.push(ROUTES.AUTH)}
+          onClick={() => router.push(ROUTES.LOGIN)}
           className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
         >
           {BACK_TO_SIGN_IN}

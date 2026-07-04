@@ -146,14 +146,14 @@ export function FilterDrawer({
           <button
             type="button"
             onClick={onClearFilters}
-            className="px-4 py-2 rounded-full text-sm text-text-secondary border border-border hover:border-primary hover:text-primary transition-colors"
+            className="font-subheader px-4 py-2 rounded-full text-sm text-text-secondary border border-border hover:border-primary hover:text-primary transition-colors"
           >
             Clear filters
           </button>
           <button
             type="button"
             onClick={onSearch}
-            className="px-6 py-2 rounded-full text-sm font-semibold text-text-inverse bg-primary hover:bg-primary-hover transition-colors"
+            className="font-subheader px-6 py-2 rounded-full text-sm font-semibold text-text-inverse bg-primary hover:bg-primary-hover transition-colors"
           >
             Search
           </button>

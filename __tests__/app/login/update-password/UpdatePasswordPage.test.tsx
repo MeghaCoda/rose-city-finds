@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { UpdatePasswordPage } from '@/app/auth/update-password/UpdatePasswordPage'
+import { UpdatePasswordPage } from '@/app/login/update-password/UpdatePasswordPage'
 
 const mockPush = vi.fn()
 
@@ -35,11 +35,11 @@ describe('UpdatePasswordPage', () => {
       )
     })
 
-    it('navigates to /auth when "Back to sign in" is clicked', () => {
+    it('navigates to /login when "Back to sign in" is clicked', () => {
       window.location.hash = '#error_code=otp_expired'
       render(<UpdatePasswordPage />)
       fireEvent.click(screen.getByText(/back to sign in/i))
-      expect(mockPush).toHaveBeenCalledWith('/auth')
+      expect(mockPush).toHaveBeenCalledWith('/login')
     })
   })
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { User } from '@supabase/supabase-js'
-import { AuthPage } from '@/app/auth/AuthPage'
+import { AuthPage } from '@/app/login/AuthPage'
 
 const mockUser = { id: 'user-1', email: 'test@example.com' } as User
 

@@ -20,7 +20,7 @@ export const FILTER_CHIPS = [
 
 export const ROUTES = {
   HOME: '/',
-  AUTH: '/auth',
+  LOGIN: '/login',
   RESULTS: '/results',
   RESULTS_OPEN_NOW: '/results?openNow=true',
 } as const;
