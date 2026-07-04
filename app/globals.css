@@ -135,7 +135,7 @@
   /* ─── Text ──────────────────────────────────────────────── */
   --color-text-primary:      #0D0D0D;   /* headings, body copy */
   --color-text-secondary:    #4A4D6E;   /* subtitles, labels, metadata */
-  --color-text-muted:        #7A7D9E;   /* placeholder, helper text, timestamps */
+  --color-text-muted:        #5F6284;   /* placeholder, helper text, timestamps */
   --color-text-inverse:      #FFFFFF;   /* text on dark/colored backgrounds */
 
   /* ─── Functional colors ─────────────────────────────────── */

@@ -18,8 +18,8 @@ export async function Header() {
                 <div className="pl-3 flex flex-col">
                 <h1 className="text-2xl leading-tight text-[#F0F2F8]">
                 Rose City Finds</h1>
-                <p className="text-sm text-secondary leading-tight mt-1">
-          Food deals in and around Portland, OR
+                <p className="text-sm text-secondary-300 leading-tight mt-1">
+          Portland&apos;s free and discount food finder
         </p>
         </div>
           </div>
