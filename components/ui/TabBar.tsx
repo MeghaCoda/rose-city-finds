@@ -30,7 +30,7 @@ export function TabBar({ tabs, activeTab, onTabChange, className }: TabBarProps)
             key={tab.value}
             value={tab.value}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors border-b-2 cursor-pointer',
+              'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-all border-b-2 cursor-pointer active:scale-[0.97] active:opacity-70 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
               'text-text-muted border-transparent hover:text-text-secondary',
               'data-active:text-text-primary data-active:border-text-primary'
             )}

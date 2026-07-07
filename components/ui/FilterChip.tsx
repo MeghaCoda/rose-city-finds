@@ -33,20 +33,20 @@ export function FilterChip({
       pressed={selected}
       onPressedChange={() => onClick()}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border text-sm font-medium transition-colors cursor-pointer select-none',
-        compact ? 'px-3.5 py-1.5' : 'px-4 py-2',
+        'inline-flex items-center gap-2 rounded-full border text-sm font-medium transition-all cursor-pointer select-none active:scale-[0.95] outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1',
+        compact ? 'px-3.5 py-1.5' : 'px-4 py-2 group',
         fullWidth && 'flex-1 justify-center',
         selected
-          ? selectedClassName
-          : 'bg-surface-1 border-border text-text-primary hover:border-primary',
+          ? cn(selectedClassName, !compact && 'hover:brightness-90 hover:shadow-md')
+          : cn('bg-surface-1 border-border text-text-primary hover:border-primary', !compact && 'hover:bg-primary-subtle'),
         className
       )}
     >
       {!compact && (
         <span
           className={cn(
-            'inline-flex shrink-0 items-center justify-center w-4 h-4 rounded-[3px] border-[1.5px]',
-            selected ? cn('border-text-inverse', selectedCheckboxClassName) : 'border-border'
+            'inline-flex shrink-0 items-center justify-center w-4 h-4 rounded-[3px] border-[1.5px] transition-colors',
+            selected ? cn('border-text-inverse', selectedCheckboxClassName) : 'border-border group-hover:border-primary'
           )}
           aria-hidden
         >

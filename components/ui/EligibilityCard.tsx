@@ -58,7 +58,7 @@ export function EligibilityCard({
         data-slot="eligibility-option"
         checked={anyoneSelected}
         onCheckedChange={() => onToggle('anyone')}
-        className="w-full flex items-center gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-surface-0 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-surface-0 active:bg-surface-0 active:scale-[0.99] transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
       >
         <CheckboxIcon checked={anyoneSelected} />
         <span className="text-sm font-medium text-text-primary">{anyoneLabel}</span>
@@ -76,7 +76,7 @@ export function EligibilityCard({
               checked={isChecked}
               onCheckedChange={() => onToggle(opt.value)}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-0 transition-colors',
+                'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-0 active:bg-surface-0 active:scale-[0.99] transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
                 i % 2 === 0 && !isLastOdd ? 'border-r border-border' : '',
                 i < options.length - (isLastOdd ? 1 : 2) ? 'border-b border-border' : '',
                 isLastOdd ? 'col-span-2' : ''
