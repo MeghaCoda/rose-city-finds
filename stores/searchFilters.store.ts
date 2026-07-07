@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { parseParams, type FilterState } from './searchFilters.url'
 
 export type FilterKey = 'price' | 'foodType' | 'accessType' | 'eligibility'
 
@@ -32,23 +33,29 @@ export const ELIGIBILITY_OPTIONS = [
   { value: 'military_discount',  label: 'Military' },
 ]
 
-interface SearchFiltersState {
-  price: string[]
-  foodType: string[]
-  accessType: string[]
-  eligibility: string[]
+interface SearchFiltersState extends FilterState {
   toggle: (key: FilterKey, value: string) => void
   toggleEligibility: (value: string) => void
   setFilter: (key: FilterKey, values: string[]) => void
   reset: () => void
-  toParams: () => URLSearchParams
+  hydrateFromParams: (params: URLSearchParams) => void
 }
 
-const defaultFilters = {
-  price: ['free'] as string[],
-  foodType: ['prepared'] as string[],
-  accessType: ['pickup'] as string[],
-  eligibility: ['anyone'] as string[],
+const defaultFilters: FilterState = {
+  price: ['free'],
+  foodType: ['prepared'],
+  accessType: ['pickup'],
+  eligibility: ['anyone'],
+}
+
+// 'anyone' is exclusive in the UI — toggleEligibility never lets it coexist with
+// other values. A hand-edited URL can still contain eligibility=anyone,seniors,
+// so hydration has to re-enforce that invariant instead of setting parsed state as-is.
+function sanitizeEligibility(eligibility: string[]): string[] {
+  if (eligibility.length > 1 && eligibility.includes('anyone')) {
+    return eligibility.filter((v) => v !== 'anyone')
+  }
+  return eligibility
 }
 
 export const useSearchFilters = create<SearchFiltersState>()(devtools((set, get) => ({
@@ -75,13 +82,12 @@ export const useSearchFilters = create<SearchFiltersState>()(devtools((set, get)
   reset() {
     set(defaultFilters, false, { type: 'reset' })
   },
-  toParams() {
-    const { price, foodType, accessType, eligibility } = get()
-    const params = new URLSearchParams()
-    if (price.length) params.set('price', price.join(','))
-    if (foodType.length) params.set('foodType', foodType.join(','))
-    if (accessType.length) params.set('accessType', accessType.join(','))
-    if (eligibility.length) params.set('eligibility', eligibility.join(','))
-    return params
+  hydrateFromParams(params) {
+    const parsed = parseParams(params)
+    set(
+      { ...parsed, eligibility: sanitizeEligibility(parsed.eligibility) },
+      false,
+      { type: 'hydrateFromParams' }
+    )
   },
 }), { name: 'searchFilters' }))

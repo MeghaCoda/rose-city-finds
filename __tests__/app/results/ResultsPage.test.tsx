@@ -16,11 +16,12 @@ import type { ResourceWithLocation } from '@/schemas/zodSchema'
 // ─── Next.js navigation mocks ────────────────────────────────────────────────
 
 const mockPush = vi.fn()
+const mockReplace = vi.fn()
 const mockSearchParams = new URLSearchParams()
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/results',
 }))
 
@@ -484,15 +485,18 @@ describe('filter chips', () => {
     }
   })
 
-  it('no chip is selected by default', () => {
+  it('the store defaults (Free, Prepared, Pickup, Anyone) are selected by default', () => {
     render(<ResultsPage />)
     // A selected chip gains a "✕" close indicator.
-    // When no chip is selected none of the chips contain a visible ✕.
-    const closeIcons = screen.queryAllByText('✕')
-    const visibleClose = closeIcons.filter(
-      (el) => !el.classList.contains('opacity-0')
-    )
-    expect(visibleClose).toHaveLength(0)
+    for (const label of ['Free', 'Prepared', 'Pickup', 'Anyone']) {
+      const chip = screen.getByRole('button', { name: new RegExp(`^${label}`, 'i') })
+      expect(within(chip).queryByText('✕')).not.toHaveClass('opacity-0')
+    }
+    // Everything else stays unselected.
+    for (const label of ['Discount', 'Groceries', 'Restaurant']) {
+      const chip = screen.queryByRole('button', { name: new RegExp(`^${label}`, 'i') })
+      expect(chip).not.toBeInTheDocument()
+    }
   })
 
   it('chip appears selected when its param is in the URL', () => {
@@ -514,7 +518,7 @@ describe('filter chips', () => {
     setSearchParams({ price: 'free' })
     render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    expect(mockPush).toHaveBeenCalledWith('/results?')
+    expect(mockReplace).toHaveBeenCalledWith('/results?', { scroll: false })
   })
 
   it('multiple chips with the same key accumulate comma-separated values', () => {
@@ -828,8 +832,8 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
 describe('List / Map view toggle', () => {
   it('shows "List" and "Map" tab buttons', () => {
     render(<ResultsPage />)
-    expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^map$/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /list/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /^map$/i })).toBeInTheDocument()
   })
 
   it('renders the location map element', () => {

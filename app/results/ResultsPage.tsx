@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import type { ResourceWithLocation } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
-import { useSearchFilters } from '@/store/searchFilters'
+import { useSearchFilters, type FilterKey } from '@/stores/searchFilters.store'
+import { toParams, hasFilterParams } from '@/stores/searchFilters.url'
+import { useSyncFiltersWithUrl } from '@/hooks/useSyncFiltersWithUrl'
 import { TabBar } from '@/components/ui/TabBar'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
@@ -24,13 +26,29 @@ const TABS = [
 ] satisfies { value: string; label: string; icon: React.ReactNode }[]
 
 export function ResultsPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  useSyncFiltersWithUrl()
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const { reset, toParams } = useSearchFilters()
+  const { price, foodType, accessType, eligibility, toggle, toggleEligibility, reset } = useSearchFilters()
+
+  function syncUrl() {
+    const params = toParams(useSearchFilters.getState())
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  useEffect(() => {
+    // A bare /results (no filter params) should adopt the store's current
+    // defaults into the URL, so a shared/bookmarked link always carries the
+    // actual filter values instead of silently relying on Zustand's initial state.
+    if (!hasFilterParams(searchParams)) {
+      syncUrl()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const { data: locations = [] } = useQuery<ResourceWithLocation[]>({
     queryKey: ['locations'],
@@ -42,23 +60,18 @@ export function ResultsPage() {
     refetchOnWindowFocus: false,
   })
 
-  function isChipActive(key: string, value: string) {
-    const param = searchParams.get(key)
-    return param ? param.split(',').includes(value) : false
+  function isChipActive(key: FilterKey, value: string) {
+    const state = { price, foodType, accessType, eligibility }
+    return state[key].includes(value)
   }
 
-  function toggleChip(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    const current = params.get(key)?.split(',').filter(Boolean) ?? []
-    const next = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value]
-    if (next.length) {
-      params.set(key, next.join(','))
+  function toggleChip(key: FilterKey, value: string) {
+    if (key === 'eligibility') {
+      toggleEligibility(value)
     } else {
-      params.delete(key)
+      toggle(key, value)
     }
-    router.push(`${pathname}?${params.toString()}`)
+    syncUrl()
   }
 
   return (
@@ -133,11 +146,11 @@ export function ResultsPage() {
         onClose={() => setDrawerOpen(false)}
         onSearch={() => {
           setDrawerOpen(false)
-          router.push(`${pathname}?${toParams().toString()}`)
+          syncUrl()
         }}
         onClearFilters={() => {
           reset()
-          router.push(pathname)
+          syncUrl()
         }}
       />
     </div>
