@@ -54,7 +54,7 @@ describe('fetchPhysicalLocations', () => {
 
     await fetchPhysicalLocations()
 
-    expect(builder.select).toHaveBeenCalledWith('*, resource_hours(*)')
+    expect(builder.select).toHaveBeenCalledWith('*, resources(*), resource_hours(*)')
   })
 
   it('filters by approved verification_status', async () => {

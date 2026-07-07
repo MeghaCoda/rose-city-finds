@@ -205,7 +205,7 @@ describe('getOfferWithLocations', () => {
       is_active: true,
       notes: null,
     }
-    const locationData = [{ id: 'loc-1', address: '123 Main St' }]
+    const locationData = [{ id: 'loc-1', address: '123 Main St', hours: [] }]
 
     mockFrom
       .mockReturnValueOnce({
@@ -270,15 +270,33 @@ describe('uploadOffers', () => {
     expect(result.created).toBe(0)
   })
 
+  // Builds a chainable mock for the "does this already exist" lookups
+  // (select().ilike()...maybeSingle()), defaulting to "not found".
+  function makeExistsCheck(result: { data: unknown; error: unknown } = { data: null, error: null }) {
+    const chain: Record<string, unknown> = {}
+    const link = () => chain
+    chain.select = vi.fn(link)
+    chain.ilike = vi.fn(link)
+    chain.is = vi.fn(link)
+    chain.eq = vi.fn(link)
+    chain.maybeSingle = vi.fn(() => Promise.resolve(result))
+    return chain
+  }
+
   it('returns success with count when all rows are created', async () => {
     mockAdminSession()
-    mockFrom.mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }),
-        }),
+    const mockResourceInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }),
       }),
     })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'resources') {
+        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
     const result = await uploadOffers(
       [{ name: 'Food Bank' }, { name: 'Community Fridge' }],
       'admin-1',
@@ -289,13 +307,18 @@ describe('uploadOffers', () => {
 
   it('returns an error when a resource insert fails', async () => {
     mockAdminSession()
-    mockFrom.mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: null, error: { message: 'insert failed' } }),
-        }),
+    const mockResourceInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'insert failed' } }),
       }),
     })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'resources') {
+        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
     const result = await uploadOffers([{ name: 'Food Bank' }], 'admin-1')
     expect(result.error).toMatch(/failed to create offer/i)
     expect(result.created).toBe(0)
@@ -303,16 +326,34 @@ describe('uploadOffers', () => {
 
   it('inserts a location when the row includes location data', async () => {
     mockAdminSession()
+    process.env.GEOCODIO_API_KEY = 'test-geocodio-key'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        results: [{ location: { lat: 45.5, lng: -122.6 }, accuracy: 1, accuracy_type: 'rooftop' }],
+      }),
+    }))
+
     const mockResourceInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }),
       }),
     })
-    const mockLocationInsert = vi.fn().mockResolvedValue({ error: null })
+    const mockLocationInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'loc-1' }, error: null }),
+      }),
+    })
 
-    mockFrom
-      .mockReturnValueOnce({ insert: mockResourceInsert })
-      .mockReturnValueOnce({ insert: mockLocationInsert })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'resources') {
+        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      }
+      if (table === 'physical_locations') {
+        return { ...makeExistsCheck(), insert: mockLocationInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
 
     const result = await uploadOffers(
       [{
@@ -326,5 +367,8 @@ describe('uploadOffers', () => {
     expect(mockLocationInsert).toHaveBeenCalledWith(
       expect.objectContaining({ resource_id: 'new-1', address: '123 Main St' }),
     )
+
+    vi.unstubAllGlobals()
+    delete process.env.GEOCODIO_API_KEY
   })
 })

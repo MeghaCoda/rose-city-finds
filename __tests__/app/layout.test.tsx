@@ -5,6 +5,8 @@ vi.mock('next/font/google', () => ({
   Geist: vi.fn(() => ({ variable: '--font-geist-sans' })),
   Geist_Mono: vi.fn(() => ({ variable: '--font-geist-mono' })),
   Inter: vi.fn(() => ({ variable: '--font-sans' })),
+  Space_Grotesk: vi.fn(() => ({ variable: '--font-header' })),
+  Libre_Franklin: vi.fn(() => ({ variable: '--font-subheader' })),
 }))
 
 vi.mock('@/components/Header/Header', () => ({

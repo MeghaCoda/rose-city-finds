@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic'
 import type { ResourceWithLocation } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
 import { useSearchFilters, type FilterKey } from '@/stores/searchFilters.store'
-import { toParams, hasFilterParams } from '@/stores/searchFilters.url'
+import { toParams, hasFilterParams, parseParams } from '@/stores/searchFilters.url'
 import { useSyncFiltersWithUrl } from '@/hooks/useSyncFiltersWithUrl'
 import { TabBar } from '@/components/ui/TabBar'
 import { FilterChip } from '@/components/ui/FilterChip'
@@ -24,6 +24,38 @@ const TABS = [
   { value: 'list', label: LIST_LABEL, icon: <IconList size={15} stroke={1.5} /> },
   { value: 'map',  label: MAP_LABEL,  icon: <IconMap2 size={15} stroke={1.5} /> },
 ] satisfies { value: string; label: string; icon: React.ReactNode }[]
+
+// Maps a "price" filter chip value to the benefit_category values that satisfy it.
+const PRICE_BENEFITS: Record<string, string[]> = {
+  free: ['free_food', 'free_breakfast'],
+  discount: ['discounted_food', 'snap_accepted', 'student_discount', 'senior_discount', 'kids_eat_free', 'bogo', 'coupon'],
+  military_discount: ['military_discount'],
+}
+
+function matchesPrice(item: ResourceWithLocation, values: string[]) {
+  if (values.length === 0) return true
+  const benefits = item.benefits ?? []
+  return values.some((v) => (PRICE_BENEFITS[v] ?? []).some((b) => benefits.includes(b)))
+}
+
+function matchesAccessType(values: string[]) {
+  if (values.length === 0) return true
+  // Resources with a physical_location only support pickup/dine-in today —
+  // there is no delivery/online-access flag on ResourceWithLocation yet.
+  return values.some((v) => v === 'pickup' || v === 'dine_in')
+}
+
+// price/foodType/accessType filters only apply once the URL actually carries
+// them — a bare /results shows every non-expired, active resource while the
+// store's own defaults are still propagating to the URL.
+function isVisible(item: ResourceWithLocation, urlFilters: { price: string[]; accessType: string[] } | null) {
+  if (item.is_active === false) return false
+  if (item.expires_at && new Date(item.expires_at).getTime() < Date.now()) return false
+  if (!urlFilters) return true
+  if (!matchesPrice(item, urlFilters.price)) return false
+  if (!matchesAccessType(urlFilters.accessType)) return false
+  return true
+}
 
 export function ResultsPage() {
   const router = useRouter()
@@ -59,6 +91,9 @@ export function ResultsPage() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
+
+  const urlFilters = hasFilterParams(searchParams) ? parseParams(searchParams) : null
+  const visibleLocations = locations.filter((item) => isVisible(item, urlFilters))
 
   function isChipActive(key: FilterKey, value: string) {
     const state = { price, foodType, accessType, eligibility }
@@ -115,7 +150,7 @@ export function ResultsPage() {
               {LOADING_RESOURCES}
             </p>
           )}
-          {locations.map((item) => (
+          {visibleLocations.map((item) => (
             <ResultListItem
               key={item.physical_location.id}
               name={item.name}
@@ -134,7 +169,7 @@ export function ResultsPage() {
           className={`${view === 'map' ? 'flex' : 'hidden'} md:flex flex-1 min-w-0 isolate`}
         >
           <LocationMap
-            data={locations}
+            data={visibleLocations}
             selectedId={selectedId}
             onSelect={(item) => setSelectedId((item as ResourceWithLocation).id)}
           />

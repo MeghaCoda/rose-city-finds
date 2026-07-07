@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import Home from '@/app/page'
+import { HOME_COMING_SOON_TITLE, HOME_COMING_SOON_DESCRIPTION } from '@/app/constants'
+import { CONTACT_EMAIL } from '@/lib/constants'
 
 vi.mock('next/image', () => ({
   default: ({ alt, ...props }: { alt: string; [key: string]: unknown }) => (
@@ -9,23 +11,19 @@ vi.mock('next/image', () => ({
 }))
 
 describe('Home page', () => {
-  it('renders the Next.js logo', () => {
+  it('renders the coming soon heading', () => {
     render(<Home />)
-    expect(screen.getByAltText('Next.js logo')).toBeInTheDocument()
+    expect(screen.getByText(HOME_COMING_SOON_TITLE)).toBeInTheDocument()
   })
 
-  it('renders the getting started heading', () => {
+  it('renders the coming soon description', () => {
     render(<Home />)
-    expect(screen.getByText(/to get started/i)).toBeInTheDocument()
+    expect(screen.getByText(HOME_COMING_SOON_DESCRIPTION)).toBeInTheDocument()
   })
 
-  it('renders the Deploy Now link', () => {
+  it('renders a mailto link with the contact email', () => {
     render(<Home />)
-    expect(screen.getByText(/deploy now/i)).toBeInTheDocument()
-  })
-
-  it('renders the Documentation link', () => {
-    render(<Home />)
-    expect(screen.getByText(/documentation/i)).toBeInTheDocument()
+    const link = screen.getByText(CONTACT_EMAIL)
+    expect(link).toHaveAttribute('href', `mailto:${CONTACT_EMAIL}`)
   })
 })

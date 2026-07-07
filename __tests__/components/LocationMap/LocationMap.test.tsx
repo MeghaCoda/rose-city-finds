@@ -12,6 +12,7 @@ vi.mock('leaflet', () => ({
         mergeOptions: vi.fn(),
       },
     },
+    divIcon: vi.fn(() => ({})),
   },
 }))
 
