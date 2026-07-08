@@ -20,7 +20,9 @@ export const BenefitCategorySchema = z.enum([
   "military_discount",
 ]);
 
-export const SubmissionStatusSchema = z.enum(["pending", "approved", "rejected"]);
+export const VerificationStatusSchema = z.enum(["pending", "verified", "rejected"]);
+
+export const VerificationOutcomeSchema = z.enum(["verified", "rejected"]);
 
 export const EditStatusSchema = z.enum(["pending", "approved", "rejected"]);
 
@@ -33,8 +35,6 @@ export const DayOfWeekSchema = z.enum([
   "saturday",
   "sunday",
 ]);
-
-export const VerificationStatusSchema = z.enum(["pending", "verified", "rejected"]);
 
 // ============================================================
 // USERS
@@ -61,7 +61,7 @@ export const ResourcesSchema = z.object({
   offer_desc: z.string().nullable().optional(),
   offer_source: z.string().nullable().optional(),
   benefits: z.array(BenefitCategorySchema).nullable().optional(),
-  verification_status: SubmissionStatusSchema.nullable().optional(),
+  verification_status: VerificationStatusSchema.nullable().optional(),
   expires_at: z.string().nullable().optional(), // date string e.g. "2025-12-31"
   is_active: z.boolean().nullable().optional(),
   created_by: z.string().uuid(),
@@ -70,24 +70,6 @@ export const ResourcesSchema = z.object({
 });
 
 export type Resource = z.infer<typeof ResourcesSchema>;
-
-// ============================================================
-// OWNERS
-// ============================================================
-
-export const OwnersSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
-  resource_id: z.string().uuid(),
-  verification_status: z.string().min(1),
-  verification_method: z.enum(["phone", "document", "email_domain"]).nullable().optional(),
-  verification_notes: z.string().nullable().optional(),
-  verified_at: z.string().datetime({ offset: true }).nullable().optional(),
-  verified_by: z.string().uuid().nullable().optional(),
-  created_at: z.string().datetime({ offset: true }).nullable().optional(),
-});
-
-export type Owner = z.infer<typeof OwnersSchema>;
 
 // ============================================================
 // PHYSICAL LOCATIONS
@@ -106,7 +88,7 @@ export const PhysicalLocationsSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   phone_number: z.string().nullable().optional(),
-  verification_status: SubmissionStatusSchema.nullable().optional(),
+  verification_status: VerificationStatusSchema.nullable().optional(),
   created_at: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
@@ -195,11 +177,10 @@ export const VerificationEventsSchema = z.object({
   id: z.string().uuid(),
   resource_id: z.string().uuid().nullable().optional(),
   physical_location_id: z.string().uuid().nullable().optional(),
-  owner_id: z.string().uuid().nullable().optional(),
   verified_at: z.string().datetime({ offset: true }).nullable().optional(),
   verified_by: z.string().uuid().nullable().optional(),
   method: z.string().nullable().optional(),
-  outcome: z.string().nullable().optional(),
+  outcome: VerificationOutcomeSchema,
   notes: z.string().nullable().optional(),
 });
 
@@ -228,7 +209,7 @@ export type CommunityNote = z.infer<typeof CommunityNotesSchema>;
 export const SubmissionsSchema = z.object({
   id: z.string().uuid(),
   submitted_by: z.string().uuid(),
-  status: SubmissionStatusSchema,
+  status: VerificationStatusSchema,
   reviewed_by: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
@@ -240,10 +221,10 @@ export const SubmissionsSchema = z.object({
 export type Submission = z.infer<typeof SubmissionsSchema>;
 
 // ============================================================
-// EDITS
+// PENDING EDITS
 // ============================================================
 
-export const EditsSchema = z.object({
+export const PendingEditsSchema = z.object({
   id: z.string().uuid(),
   resource_id: z.string().uuid(),
   submitted_by: z.string().uuid(),
@@ -255,7 +236,7 @@ export const EditsSchema = z.object({
   created_at: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
-export type Edit = z.infer<typeof EditsSchema>;
+export type PendingEdit = z.infer<typeof PendingEditsSchema>;
 
 // ============================================================
 // EDIT HISTORY
@@ -293,7 +274,6 @@ export type ResourceWithLocation = z.infer<typeof ResourceWithLocationSchema>;
 
 export const UsersArraySchema = z.array(UsersSchema);
 export const ResourcesArraySchema = z.array(ResourcesSchema);
-export const OwnersArraySchema = z.array(OwnersSchema);
 export const PhysicalLocationsArraySchema = z.array(PhysicalLocationsSchema);
 export const OnlineAccessArraySchema = z.array(OnlineAccessSchema);
 export const OtherAccessArraySchema = z.array(OtherAccessSchema);
@@ -303,7 +283,7 @@ export const ResourceEligibilityArraySchema = z.array(ResourceEligibilitySchema)
 export const VerificationEventsArraySchema = z.array(VerificationEventsSchema);
 export const CommunityNotesArraySchema = z.array(CommunityNotesSchema);
 export const SubmissionsArraySchema = z.array(SubmissionsSchema);
-export const EditsArraySchema = z.array(EditsSchema);
+export const PendingEditsArraySchema = z.array(PendingEditsSchema);
 export const EditHistoryArraySchema = z.array(EditHistorySchema);
 
 // ============================================================

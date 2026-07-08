@@ -77,7 +77,7 @@ describe('PhysicalLocationsSchema', () => {
       address2: 'Suite 100',
       neighborhood: 'Pearl District',
       phone_number: '503-555-9999',
-      verification_status: 'approved',
+      verification_status: 'verified',
     })
     expect(result.success).toBe(true)
   })
@@ -85,7 +85,7 @@ describe('PhysicalLocationsSchema', () => {
   it('rejects an invalid verification_status value', () => {
     expect(PhysicalLocationsSchema.safeParse({
       ...mockLocation,
-      verification_status: 'verified',
+      verification_status: 'approved',
     }).success).toBe(false)
   })
 })
@@ -235,17 +235,16 @@ const mockVerificationEvent: VerificationEvent = {
   id: MOCK_HOURS_ID,
   resource_id: MOCK_RESOURCE_ID,
   physical_location_id: MOCK_LOCATION_ID,
-  owner_id: null,
   verified_at: '2026-06-12T00:00:00Z',
   verified_by: null,
   method: 'phone',
-  outcome: 'confirmed',
+  outcome: 'verified',
   notes: null,
 }
 
 describe('VerificationEventsSchema', () => {
   it('accepts a minimal valid event', () => {
-    expect(VerificationEventsSchema.safeParse({ id: MOCK_HOURS_ID }).success).toBe(true)
+    expect(VerificationEventsSchema.safeParse({ id: MOCK_HOURS_ID, outcome: 'verified' }).success).toBe(true)
   })
 
   it('accepts a fully populated event', () => {
@@ -253,7 +252,7 @@ describe('VerificationEventsSchema', () => {
   })
 
   it('rejects non-UUID id', () => {
-    expect(VerificationEventsSchema.safeParse({ id: 'not-a-uuid' }).success).toBe(false)
+    expect(VerificationEventsSchema.safeParse({ id: 'not-a-uuid', outcome: 'verified' }).success).toBe(false)
   })
 
   it('rejects non-UUID resource_id when provided', () => {
@@ -263,16 +262,26 @@ describe('VerificationEventsSchema', () => {
     }).success).toBe(false)
   })
 
-  it('accepts null for all nullable optional fields', () => {
+  it('rejects a missing outcome', () => {
+    expect(VerificationEventsSchema.safeParse({ id: MOCK_HOURS_ID }).success).toBe(false)
+  })
+
+  it('rejects an invalid outcome value', () => {
+    expect(VerificationEventsSchema.safeParse({
+      ...mockVerificationEvent,
+      outcome: 'confirmed',
+    }).success).toBe(false)
+  })
+
+  it('accepts null for the other nullable optional fields', () => {
     expect(VerificationEventsSchema.safeParse({
       id: MOCK_HOURS_ID,
       resource_id: null,
       physical_location_id: null,
-      owner_id: null,
       verified_at: null,
       verified_by: null,
       method: null,
-      outcome: null,
+      outcome: 'rejected',
       notes: null,
     }).success).toBe(true)
   })

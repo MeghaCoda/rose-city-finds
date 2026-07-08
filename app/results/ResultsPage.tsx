@@ -34,7 +34,7 @@ const PRICE_BENEFITS: Record<string, string[]> = {
 
 function matchesPrice(item: ResourceWithLocation, values: string[]) {
   if (values.length === 0) return true
-  const benefits = item.benefits ?? []
+  const benefits: string[] = item.benefits ?? []
   return values.some((v) => (PRICE_BENEFITS[v] ?? []).some((b) => benefits.includes(b)))
 }
 

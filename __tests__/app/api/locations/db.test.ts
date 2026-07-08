@@ -57,13 +57,13 @@ describe('fetchPhysicalLocations', () => {
     expect(builder.select).toHaveBeenCalledWith('*, resources(*), resource_hours(*)')
   })
 
-  it('filters by approved verification_status', async () => {
+  it('filters by verified verification_status', async () => {
     const builder = makeBuilder({ data: [mockDbRow], error: null })
     mockFrom.mockReturnValue(builder)
 
     await fetchPhysicalLocations()
 
-    expect(builder.eq).toHaveBeenCalledWith('verification_status', 'approved')
+    expect(builder.eq).toHaveBeenCalledWith('verification_status', 'verified')
   })
 
   it('throws when Supabase returns an error', async () => {
