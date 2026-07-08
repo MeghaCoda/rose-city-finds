@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import type { ResourceWithLocation } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
-import { useSearchFilters } from '@/store/searchFilters'
+import { useSearchFilters, type FilterKey } from '@/stores/searchFilters.store'
+import { toParams, hasFilterParams, parseParams } from '@/stores/searchFilters.url'
+import { useSyncFiltersWithUrl } from '@/hooks/useSyncFiltersWithUrl'
 import { TabBar } from '@/components/ui/TabBar'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
@@ -23,14 +25,62 @@ const TABS = [
   { value: 'map',  label: MAP_LABEL,  icon: <IconMap2 size={15} stroke={1.5} /> },
 ] satisfies { value: string; label: string; icon: React.ReactNode }[]
 
+// Maps a "price" filter chip value to the benefit_category values that satisfy it.
+const PRICE_BENEFITS: Record<string, string[]> = {
+  free: ['free_food', 'free_breakfast'],
+  discount: ['discounted_food', 'snap_accepted', 'student_discount', 'senior_discount', 'kids_eat_free', 'bogo', 'coupon'],
+  military_discount: ['military_discount'],
+}
+
+function matchesPrice(item: ResourceWithLocation, values: string[]) {
+  if (values.length === 0) return true
+  const benefits: string[] = item.benefits ?? []
+  return values.some((v) => (PRICE_BENEFITS[v] ?? []).some((b) => benefits.includes(b)))
+}
+
+function matchesAccessType(values: string[]) {
+  if (values.length === 0) return true
+  // Resources with a physical_location only support pickup/dine-in today —
+  // there is no delivery/online-access flag on ResourceWithLocation yet.
+  return values.some((v) => v === 'pickup' || v === 'dine_in')
+}
+
+// price/foodType/accessType filters only apply once the URL actually carries
+// them — a bare /results shows every non-expired, active resource while the
+// store's own defaults are still propagating to the URL.
+function isVisible(item: ResourceWithLocation, urlFilters: { price: string[]; accessType: string[] } | null) {
+  if (item.is_active === false) return false
+  if (item.expires_at && new Date(item.expires_at).getTime() < Date.now()) return false
+  if (!urlFilters) return true
+  if (!matchesPrice(item, urlFilters.price)) return false
+  if (!matchesAccessType(urlFilters.accessType)) return false
+  return true
+}
+
 export function ResultsPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  useSyncFiltersWithUrl()
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const { reset, toParams } = useSearchFilters()
+  const { price, foodType, accessType, eligibility, toggle, toggleEligibility, reset } = useSearchFilters()
+
+  function syncUrl() {
+    const params = toParams(useSearchFilters.getState())
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  useEffect(() => {
+    // A bare /results (no filter params) should adopt the store's current
+    // defaults into the URL, so a shared/bookmarked link always carries the
+    // actual filter values instead of silently relying on Zustand's initial state.
+    if (!hasFilterParams(searchParams)) {
+      syncUrl()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const { data: locations = [] } = useQuery<ResourceWithLocation[]>({
     queryKey: ['locations'],
@@ -42,23 +92,21 @@ export function ResultsPage() {
     refetchOnWindowFocus: false,
   })
 
-  function isChipActive(key: string, value: string) {
-    const param = searchParams.get(key)
-    return param ? param.split(',').includes(value) : false
+  const urlFilters = hasFilterParams(searchParams) ? parseParams(searchParams) : null
+  const visibleLocations = locations.filter((item) => isVisible(item, urlFilters))
+
+  function isChipActive(key: FilterKey, value: string) {
+    const state = { price, foodType, accessType, eligibility }
+    return state[key].includes(value)
   }
 
-  function toggleChip(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    const current = params.get(key)?.split(',').filter(Boolean) ?? []
-    const next = current.includes(value)
-      ? current.filter((v) => v !== value)
-      : [...current, value]
-    if (next.length) {
-      params.set(key, next.join(','))
+  function toggleChip(key: FilterKey, value: string) {
+    if (key === 'eligibility') {
+      toggleEligibility(value)
     } else {
-      params.delete(key)
+      toggle(key, value)
     }
-    router.push(`${pathname}?${params.toString()}`)
+    syncUrl()
   }
 
   return (
@@ -102,7 +150,7 @@ export function ResultsPage() {
               {LOADING_RESOURCES}
             </p>
           )}
-          {locations.map((item) => (
+          {visibleLocations.map((item) => (
             <ResultListItem
               key={item.physical_location.id}
               name={item.name}
@@ -121,7 +169,7 @@ export function ResultsPage() {
           className={`${view === 'map' ? 'flex' : 'hidden'} md:flex flex-1 min-w-0 isolate`}
         >
           <LocationMap
-            data={locations}
+            data={visibleLocations}
             selectedId={selectedId}
             onSelect={(item) => setSelectedId((item as ResourceWithLocation).id)}
           />
@@ -133,11 +181,11 @@ export function ResultsPage() {
         onClose={() => setDrawerOpen(false)}
         onSearch={() => {
           setDrawerOpen(false)
-          router.push(`${pathname}?${toParams().toString()}`)
+          syncUrl()
         }}
         onClearFilters={() => {
           reset()
-          router.push(pathname)
+          syncUrl()
         }}
       />
     </div>

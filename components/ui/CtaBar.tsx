@@ -15,12 +15,12 @@ export function CtaBar({ label, sublabel, onClick, className }: CtaBarProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full bg-primary rounded-xl px-6 py-5 flex items-center gap-3 cursor-pointer hover:bg-primary-hover transition-colors',
+        'w-full bg-primary rounded-xl px-6 py-5 flex items-center gap-3 cursor-pointer hover:bg-primary-hover active:bg-primary-700 active:scale-[0.99] transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/50',
         className
       )}
     >
       <span
-        className="flex-shrink-0 w-5 h-5 rounded-[3px] border-2 border-text-inverse"
+        className="shrink-0 w-5 h-5 rounded-[3px] border-2 border-text-inverse"
         aria-hidden
       />
       <span className="flex items-baseline gap-1.5">

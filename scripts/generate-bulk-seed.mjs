@@ -71,7 +71,7 @@ function sqlArray(values, type) {
 }
 function pickStatus() {
   const r = faker.number.float({ min: 0, max: 1 });
-  return r < 0.8 ? "approved" : r < 0.9 ? "pending" : "rejected";
+  return r < 0.8 ? "verified" : r < 0.9 ? "pending" : "rejected";
 }
 function pastThenUpdated() {
   const createdAt = faker.date.past({ years: 2, refDate: REFERENCE_DATE });

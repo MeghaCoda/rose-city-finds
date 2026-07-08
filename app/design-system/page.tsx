@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconList, IconMap2 } from '@tabler/icons-react'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { FilterSection } from '@/components/ui/FilterSection'
@@ -11,7 +12,8 @@ import { ResultListItem } from '@/components/ui/ResultListItem'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { StandardButton } from '@/components/ui/StandardButton'
-import { useSearchFilters } from '@/store/searchFilters'
+import { useSearchFilters } from '@/stores/searchFilters.store'
+import { toParams } from '@/stores/searchFilters.url'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,6 +159,14 @@ export default function DesignSystemPage() {
   // FilterDrawer demo
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { reset: resetFilters } = useSearchFilters()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  function handleClearFilters() {
+    resetFilters()
+    const params = toParams(useSearchFilters.getState())
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   const anyoneSelected = eligibility.has('anyone')
 
@@ -566,7 +576,7 @@ export default function DesignSystemPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onSearch={() => setDrawerOpen(false)}
-        onClearFilters={resetFilters}
+        onClearFilters={handleClearFilters}
       />
     </div>
   )

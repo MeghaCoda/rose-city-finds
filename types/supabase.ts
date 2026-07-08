@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -112,7 +132,7 @@ export type Database = {
             foreignKeyName: "edit_history_edit_id_fkey"
             columns: ["edit_id"]
             isOneToOne: false
-            referencedRelation: "edits"
+            referencedRelation: "pending_edits"
             referencedColumns: ["id"]
           },
           {
@@ -120,64 +140,6 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      edits: {
-        Row: {
-          created_at: string | null
-          field_name: string
-          id: string
-          new_value: string | null
-          old_value: string | null
-          resource_id: string
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string
-        }
-        Insert: {
-          created_at?: string | null
-          field_name: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string
-        }
-        Update: {
-          created_at?: string | null
-          field_name?: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id?: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "edits_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edits_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edits_submitted_by_fkey"
-            columns: ["submitted_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -246,58 +208,58 @@ export type Database = {
           },
         ]
       }
-      owners: {
+      pending_edits: {
         Row: {
           created_at: string | null
+          field_name: string
           id: string
+          new_value: string | null
+          old_value: string | null
           resource_id: string
-          user_id: string
-          verification_method: string | null
-          verification_notes: string | null
-          verification_status: string
-          verified_at: string | null
-          verified_by: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["edit_status"]
+          submitted_by: string
         }
         Insert: {
           created_at?: string | null
+          field_name: string
           id?: string
+          new_value?: string | null
+          old_value?: string | null
           resource_id: string
-          user_id: string
-          verification_method?: string | null
-          verification_notes?: string | null
-          verification_status?: string
-          verified_at?: string | null
-          verified_by?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["edit_status"]
+          submitted_by: string
         }
         Update: {
           created_at?: string | null
+          field_name?: string
           id?: string
+          new_value?: string | null
+          old_value?: string | null
           resource_id?: string
-          user_id?: string
-          verification_method?: string | null
-          verification_notes?: string | null
-          verification_status?: string
-          verified_at?: string | null
-          verified_by?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["edit_status"]
+          submitted_by?: string
         }
         Relationships: [
           {
-            foreignKeyName: "owners_resource_id_fkey"
+            foreignKeyName: "pending_edits_resource_id_fkey"
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "owners_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "pending_edits_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "owners_verified_by_fkey"
-            columns: ["verified_by"]
+            foreignKeyName: "pending_edits_submitted_by_fkey"
+            columns: ["submitted_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -310,14 +272,18 @@ export type Database = {
           address2: string | null
           city: string
           created_at: string | null
+          created_by: string | null
           id: string
-          latitude: number | null
-          longitude: number | null
+          latitude: number
+          longitude: number
           neighborhood: string | null
+          notes: string | null
           phone_number: string | null
           resource_id: string
           state: string
-          verification_status: string | null
+          verification_status:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
           zip_code: string
         }
         Insert: {
@@ -325,14 +291,18 @@ export type Database = {
           address2?: string | null
           city: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          latitude: number
+          longitude: number
           neighborhood?: string | null
+          notes?: string | null
           phone_number?: string | null
           resource_id: string
           state: string
-          verification_status?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
           zip_code: string
         }
         Update: {
@@ -340,17 +310,28 @@ export type Database = {
           address2?: string | null
           city?: string
           created_at?: string | null
+          created_by?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          latitude?: number
+          longitude?: number
           neighborhood?: string | null
+          notes?: string | null
           phone_number?: string | null
           resource_id?: string
           state?: string
-          verification_status?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
           zip_code?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "physical_locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "physical_locations_resource_id_fkey"
             columns: ["resource_id"]
@@ -481,10 +462,14 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          notes: string | null
           offer_desc: string | null
           offer_source: string | null
+          proof_required: boolean
           updated_at: string | null
-          verification_status: string | null
+          verification_status:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
         }
         Insert: {
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
@@ -495,10 +480,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          notes?: string | null
           offer_desc?: string | null
           offer_source?: string | null
+          proof_required?: boolean
           updated_at?: string | null
-          verification_status?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
         }
         Update: {
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
@@ -509,10 +498,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           offer_desc?: string | null
           offer_source?: string | null
+          proof_required?: boolean
           updated_at?: string | null
-          verification_status?: string | null
+          verification_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
         }
         Relationships: [
           {
@@ -533,7 +526,7 @@ export type Database = {
           id: string
           name: string
           reviewed_by: string | null
-          status: Database["public"]["Enums"]["submission_status"]
+          status: Database["public"]["Enums"]["verification_status"]
           submitted_by: string
         }
         Insert: {
@@ -544,7 +537,7 @@ export type Database = {
           id?: string
           name: string
           reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["submission_status"]
+          status?: Database["public"]["Enums"]["verification_status"]
           submitted_by: string
         }
         Update: {
@@ -555,7 +548,7 @@ export type Database = {
           id?: string
           name?: string
           reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["submission_status"]
+          status?: Database["public"]["Enums"]["verification_status"]
           submitted_by?: string
         }
         Relationships: [
@@ -580,21 +573,18 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
-          role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Insert: {
           created_at?: string | null
           email: string
           id?: string
-          role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Update: {
           created_at?: string | null
           email?: string
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
           username?: string
         }
         Relationships: []
@@ -604,8 +594,7 @@ export type Database = {
           id: string
           method: string | null
           notes: string | null
-          outcome: string | null
-          owner_id: string | null
+          outcome: Database["public"]["Enums"]["verification_outcome"]
           physical_location_id: string | null
           resource_id: string | null
           verified_at: string | null
@@ -615,8 +604,7 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          outcome?: string | null
-          owner_id?: string | null
+          outcome: Database["public"]["Enums"]["verification_outcome"]
           physical_location_id?: string | null
           resource_id?: string | null
           verified_at?: string | null
@@ -626,21 +614,13 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
-          outcome?: string | null
-          owner_id?: string | null
+          outcome?: Database["public"]["Enums"]["verification_outcome"]
           physical_location_id?: string | null
           resource_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "verification_events_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "owners"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "verification_events_physical_location_id_fkey"
             columns: ["physical_location_id"]
@@ -669,7 +649,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_role: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       benefit_category:
@@ -683,6 +664,8 @@ export type Database = {
         | "coupon"
         | "free_breakfast"
         | "other"
+        | "military_discount"
+        | "everyone"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -692,8 +675,8 @@ export type Database = {
         | "saturday"
         | "sunday"
       edit_status: "pending" | "approved" | "rejected"
-      submission_status: "pending" | "approved" | "rejected"
-      user_role: "admin" | "owner" | "contributor" | "viewer"
+      verification_outcome: "verified" | "rejected"
+      verification_status: "pending" | "verified" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -819,6 +802,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       benefit_category: [
@@ -832,6 +818,8 @@ export const Constants = {
         "coupon",
         "free_breakfast",
         "other",
+        "military_discount",
+        "everyone",
       ],
       day_of_week: [
         "monday",
@@ -843,8 +831,9 @@ export const Constants = {
         "sunday",
       ],
       edit_status: ["pending", "approved", "rejected"],
-      submission_status: ["pending", "approved", "rejected"],
-      user_role: ["admin", "owner", "contributor", "viewer"],
+      verification_outcome: ["verified", "rejected"],
+      verification_status: ["pending", "verified", "rejected"],
     },
   },
 } as const
+

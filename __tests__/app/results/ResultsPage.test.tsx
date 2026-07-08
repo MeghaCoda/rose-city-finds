@@ -16,11 +16,12 @@ import type { ResourceWithLocation } from '@/schemas/zodSchema'
 // ─── Next.js navigation mocks ────────────────────────────────────────────────
 
 const mockPush = vi.fn()
+const mockReplace = vi.fn()
 const mockSearchParams = new URLSearchParams()
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => '/results',
 }))
 
@@ -42,6 +43,7 @@ vi.mock('@/components/LocationMap/LocationMap', () => ({
 }))
 
 import { ResultsPage } from '@/app/results/ResultsPage'
+import { useSearchFilters } from '@/stores/searchFilters.store'
 
 // ─── Seed-derived mock data ───────────────────────────────────────────────────
 //
@@ -100,7 +102,7 @@ function makeResource(
     offer_desc: null,
     offer_source: null,
     benefits: null,
-    verification_status: 'approved',
+    verification_status: 'verified',
     expires_at: null,
     is_active: true,
     created_by: ADMIN_ID,
@@ -119,7 +121,7 @@ function makeResource(
       latitude: 45.523,
       longitude: -122.676,
       phone_number: '(503) 555-0000',
-      verification_status: 'approved',
+      verification_status: 'verified',
       created_at: '2025-01-01T00:00:00+00:00',
       resource_hours: [],
       ...locOverrides,
@@ -455,6 +457,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   ;[...mockSearchParams.keys()].forEach((k) => mockSearchParams.delete(k))
   mockLocations([])
+  // The filters store is a module-level singleton — reset it so chip
+  // clicks in one test don't leak into the next.
+  useSearchFilters.getState().reset()
 })
 
 // ── Loading / empty state ─────────────────────────────────────────────────────
@@ -476,23 +481,28 @@ describe('empty / loading state', () => {
 // ── Filter chips ──────────────────────────────────────────────────────────────
 
 describe('filter chips', () => {
-  it('renders all 7 filter chips', () => {
+  it('renders all 7 filter chips in the filter drawer', () => {
     render(<ResultsPage />)
+    // Only active chips show in the compact bar; the rest live behind "More +".
+    fireEvent.click(screen.getByRole('button', { name: /more/i }))
     const labels = ['Free', 'Discount', 'Prepared', 'Groceries', 'Restaurant', 'Pickup', 'Delivery']
     for (const label of labels) {
-      expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: new RegExp(`^${label}$`, 'i') })).toBeInTheDocument()
     }
   })
 
-  it('no chip is selected by default', () => {
+  it('the store defaults (Free, Prepared, Pickup, Anyone) are selected by default', () => {
     render(<ResultsPage />)
     // A selected chip gains a "✕" close indicator.
-    // When no chip is selected none of the chips contain a visible ✕.
-    const closeIcons = screen.queryAllByText('✕')
-    const visibleClose = closeIcons.filter(
-      (el) => !el.classList.contains('opacity-0')
-    )
-    expect(visibleClose).toHaveLength(0)
+    for (const label of ['Free', 'Prepared', 'Pickup', 'Anyone']) {
+      const chip = screen.getByRole('button', { name: new RegExp(`^${label}`, 'i') })
+      expect(within(chip).queryByText('✕')).not.toHaveClass('opacity-0')
+    }
+    // Everything else stays unselected.
+    for (const label of ['Discount', 'Groceries', 'Restaurant']) {
+      const chip = screen.queryByRole('button', { name: new RegExp(`^${label}`, 'i') })
+      expect(chip).not.toBeInTheDocument()
+    }
   })
 
   it('chip appears selected when its param is in the URL', () => {
@@ -506,22 +516,27 @@ describe('filter chips', () => {
 
   it('clicking a chip adds its param to the URL', () => {
     render(<ResultsPage />)
-    fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    expect(mockPush).toHaveBeenCalledWith('/results?price=free')
+    // "Free" is already an active default; open the drawer and select the
+    // still-inactive "Discount" chip so the click is additive, not a toggle-off.
+    fireEvent.click(screen.getByRole('button', { name: /more/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^discount$/i }))
+    const call = mockReplace.mock.calls[mockReplace.mock.calls.length - 1][0] as string
+    const params = new URLSearchParams(call.split('?')[1])
+    expect(params.get('price')?.split(',')).toEqual(expect.arrayContaining(['free', 'discount']))
   })
 
   it('clicking an active chip removes its param from the URL', () => {
     setSearchParams({ price: 'free' })
     render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    expect(mockPush).toHaveBeenCalledWith('/results?')
+    expect(mockReplace).toHaveBeenCalledWith('/results?', { scroll: false })
   })
 
   it('multiple chips with the same key accumulate comma-separated values', () => {
-    setSearchParams({ price: 'free' })
     render(<ResultsPage />)
-    fireEvent.click(screen.getByRole('button', { name: /discount/i }))
-    const call = mockPush.mock.calls[0][0] as string
+    fireEvent.click(screen.getByRole('button', { name: /more/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^discount$/i }))
+    const call = mockReplace.mock.calls[mockReplace.mock.calls.length - 1][0] as string
     const params = new URLSearchParams(call.split('?')[1])
     const priceValues = params.get('price')?.split(',') ?? []
     expect(priceValues).toContain('free')
@@ -530,31 +545,28 @@ describe('filter chips', () => {
 
   it('chips with different keys are stored under separate params', () => {
     render(<ResultsPage />)
-    fireEvent.click(screen.getByRole('button', { name: /^free/i }))
-    const firstCall = mockPush.mock.calls[0][0] as string
-    // Simulate the URL update by setting searchParams before next render
-    setSearchParams({ price: 'free' })
-    fireEvent.click(screen.getByRole('button', { name: /pickup/i }))
-    const secondCall = mockPush.mock.calls[1][0] as string
-    const params = new URLSearchParams(secondCall.split('?')[1])
-    expect(params.get('price')).toBe('free')
-    expect(params.get('accessType')).toBe('pickup')
-    void firstCall // suppress unused warning
+    fireEvent.click(screen.getByRole('button', { name: /more/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^discount$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^delivery$/i }))
+    const lastCall = mockReplace.mock.calls[mockReplace.mock.calls.length - 1][0] as string
+    const params = new URLSearchParams(lastCall.split('?')[1])
+    expect(params.get('price')?.split(',')).toEqual(expect.arrayContaining(['free', 'discount']))
+    expect(params.get('accessType')?.split(',')).toEqual(expect.arrayContaining(['pickup', 'delivery']))
   })
 })
 
 // ── List rendering ────────────────────────────────────────────────────────────
 
 describe('list rendering', () => {
-  it('renders a list item for each location in the dataset', () => {
+  it('renders a list item for each visible location in the dataset', () => {
     mockLocations(ALL_SEED_LOCATIONS)
     render(<ResultsPage />)
-    // 14 items (r1 appears twice — once per physical location)
+    // 12 items: 14 seed locations minus r11 (is_active=false) and r12 (expired)
     const items = screen.getAllByRole('paragraph').filter((el) => {
       // ResultListItem renders resource name in the first <p> (font-medium)
       return el.classList.contains('font-medium')
     })
-    expect(items).toHaveLength(ALL_SEED_LOCATIONS.length)
+    expect(items).toHaveLength(ALL_SEED_LOCATIONS.length - 2)
   })
 
   it('renders each resource name', () => {
@@ -699,7 +711,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     render(<ResultsPage />)
     // Expected: r1 (free_food), r4 (free_food+student), r5 (free_food+senior),
     //           r9 (free_breakfast) — NOT r2 (discount), r7 (bogo), etc.
-    expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
+    expect(screen.getAllByText('Hawthorne Community Pantry').length).toBeGreaterThan(0)
     expect(screen.getByText('St. Johns Free Breakfast Club')).toBeInTheDocument()
     // GAP: currently shows all results; discount-only resources should be hidden
     expect(screen.queryByText('Alberta BOGO Bakery')).not.toBeInTheDocument()
@@ -722,7 +734,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     setSearchParams({ price: 'free,discount' })
     mockLocations(ALL_SEED_LOCATIONS)
     render(<ResultsPage />)
-    expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
+    expect(screen.getAllByText('Hawthorne Community Pantry').length).toBeGreaterThan(0)
     expect(screen.getByText('Division Street Discount Grocer')).toBeInTheDocument()
     // GAP: "other" category only resource should still be excluded
     expect(screen.queryByText('Kenton Community Services Hub')).not.toBeInTheDocument()
@@ -769,7 +781,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     mockLocations(ALL_SEED_LOCATIONS)
     render(<ResultsPage />)
     // All seed locations with physical_locations should show
-    expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
+    expect(screen.getAllByText('Hawthorne Community Pantry').length).toBeGreaterThan(0)
     expect(screen.getByText('Kenton Community Services Hub')).toBeInTheDocument()
   })
 
@@ -792,7 +804,7 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
     mockLocations(ALL_SEED_LOCATIONS)
     render(<ResultsPage />)
     // Expected: r1 (free pantry groceries), r4 (free student pantry)
-    expect(screen.getByText('Hawthorne Community Pantry')).toBeInTheDocument()
+    expect(screen.getAllByText('Hawthorne Community Pantry').length).toBeGreaterThan(0)
     // GAP: bogo bakery is not free AND groceries
     expect(screen.queryByText('Alberta BOGO Bakery')).not.toBeInTheDocument()
     // GAP: senior dining is free but prepared, not groceries
@@ -828,8 +840,8 @@ describe('filter chip → result filtering (GAP: not yet implemented)', () => {
 describe('List / Map view toggle', () => {
   it('shows "List" and "Map" tab buttons', () => {
     render(<ResultsPage />)
-    expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^map$/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /list/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /^map$/i })).toBeInTheDocument()
   })
 
   it('renders the location map element', () => {

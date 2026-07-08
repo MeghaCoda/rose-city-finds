@@ -1,5 +1,6 @@
 'use client'
 
+import { Checkbox } from '@base-ui/react/checkbox'
 import { cn } from '@/lib/utils'
 
 interface EligibilityOption {
@@ -53,14 +54,15 @@ export function EligibilityCard({
         </p>
       )}
       {/* Anyone row — full width */}
-      <button
-        type="button"
-        onClick={() => onToggle('anyone')}
-        className="w-full flex items-center gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-surface-0 transition-colors"
+      <Checkbox.Root
+        data-slot="eligibility-option"
+        checked={anyoneSelected}
+        onCheckedChange={() => onToggle('anyone')}
+        className="w-full flex items-center gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-surface-0 active:bg-surface-0 active:scale-[0.99] transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
       >
         <CheckboxIcon checked={anyoneSelected} />
         <span className="text-sm font-medium text-text-primary">{anyoneLabel}</span>
-      </button>
+      </Checkbox.Root>
 
       {/* 2-column grid of specific options */}
       <div className="grid grid-cols-2">
@@ -68,12 +70,13 @@ export function EligibilityCard({
           const isLastOdd = i === options.length - 1 && options.length % 2 !== 0
           const isChecked = selected.includes(opt.value) && !anyoneSelected
           return (
-            <button
+            <Checkbox.Root
               key={opt.value}
-              type="button"
-              onClick={() => onToggle(opt.value)}
+              data-slot="eligibility-option"
+              checked={isChecked}
+              onCheckedChange={() => onToggle(opt.value)}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-0 transition-colors',
+                'flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-0 active:bg-surface-0 active:scale-[0.99] transition-all outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
                 i % 2 === 0 && !isLastOdd ? 'border-r border-border' : '',
                 i < options.length - (isLastOdd ? 1 : 2) ? 'border-b border-border' : '',
                 isLastOdd ? 'col-span-2' : ''
@@ -81,7 +84,7 @@ export function EligibilityCard({
             >
               <CheckboxIcon checked={isChecked} />
               <span className="text-sm text-text-secondary">{opt.label}</span>
-            </button>
+            </Checkbox.Root>
           )
         })}
       </div>

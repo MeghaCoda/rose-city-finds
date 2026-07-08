@@ -1,13 +1,15 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   useSearchFilters,
   PRICE_OPTIONS,
   FOOD_TYPE_OPTIONS,
   ACCESS_OPTIONS,
   ELIGIBILITY_OPTIONS,
-} from '@/store/searchFilters'
+  type FilterKey,
+} from '@/stores/searchFilters.store'
+import { toParams } from '@/stores/searchFilters.url'
 import { ROUTES } from '@/lib/constants'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { FilterSection } from '@/components/ui/FilterSection'
@@ -23,10 +25,26 @@ import {
 
 export default function SearchPage() {
   const router = useRouter()
-  const { price, foodType, accessType, eligibility, toggle, toggleEligibility, toParams } = useSearchFilters()
+  const pathname = usePathname()
+  const { price, foodType, accessType, eligibility, toggle, toggleEligibility } = useSearchFilters()
+
+  function syncUrl() {
+    const params = toParams(useSearchFilters.getState())
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  function handleToggle(key: FilterKey, value: string) {
+    toggle(key, value)
+    syncUrl()
+  }
+
+  function handleEligibilityToggle(value: string) {
+    toggleEligibility(value)
+    syncUrl()
+  }
 
   function handleSubmit() {
-    const params = toParams()
+    const params = toParams(useSearchFilters.getState())
     router.push(`${ROUTES.RESULTS}?${params.toString()}`)
   }
 
@@ -47,7 +65,7 @@ export default function SearchPage() {
                 key={value}
                 label={label}
                 selected={price.includes(value)}
-                onClick={() => toggle('price', value)}
+                onClick={() => handleToggle('price', value)}
                 selectedClassName={selectedClassName}
                 fullWidth
               />
@@ -63,7 +81,7 @@ export default function SearchPage() {
                 key={value}
                 label={label}
                 selected={foodType.includes(value)}
-                onClick={() => toggle('foodType', value)}
+                onClick={() => handleToggle('foodType', value)}
               />
             ))}
           </div>
@@ -77,7 +95,7 @@ export default function SearchPage() {
                 key={value}
                 label={label}
                 selected={accessType.includes(value)}
-                onClick={() => toggle('accessType', value)}
+                onClick={() => handleToggle('accessType', value)}
               />
             ))}
           </div>
@@ -90,7 +108,7 @@ export default function SearchPage() {
           options={ELIGIBILITY_OPTIONS.filter((o) => o.value !== 'anyone')}
           selected={eligibility}
           anyoneSelected={eligibility.includes('anyone')}
-          onToggle={toggleEligibility}
+          onToggle={handleEligibilityToggle}
         />
       </div>
 

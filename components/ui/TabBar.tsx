@@ -1,5 +1,6 @@
 'use client'
 
+import { Tabs } from '@base-ui/react/tabs'
 import { cn } from '@/lib/utils'
 
 interface Tab {
@@ -17,26 +18,28 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab, onTabChange, className }: TabBarProps) {
   return (
-    <div className={cn('flex border-b border-border', className)}>
-      {tabs.map((tab) => {
-        const active = tab.value === activeTab
-        return (
-          <button
+    <Tabs.Root
+      data-slot="tab-bar"
+      value={activeTab}
+      onValueChange={(value) => onTabChange(value as string)}
+      className={className}
+    >
+      <Tabs.List className="flex border-b border-border">
+        {tabs.map((tab) => (
+          <Tabs.Tab
             key={tab.value}
-            type="button"
-            onClick={() => onTabChange(tab.value)}
+            value={tab.value}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors border-b-2 cursor-pointer',
-              active
-                ? 'text-text-primary border-text-primary'
-                : 'text-text-muted border-transparent hover:text-text-secondary'
+              'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-all border-b-2 cursor-pointer active:scale-[0.97] active:opacity-70 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
+              'text-text-muted border-transparent hover:text-text-secondary',
+              'data-active:text-text-primary data-active:border-text-primary'
             )}
           >
             {tab.icon}
             {tab.label}
-          </button>
-        )
-      })}
-    </div>
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs.Root>
   )
 }

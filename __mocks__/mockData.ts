@@ -61,7 +61,7 @@ export const mockResourceWithLocation: ResourceWithLocation = {
   offer_desc: null,
   offer_source: null,
   benefits: null,
-  verification_status: 'approved',
+  verification_status: 'verified',
   expires_at: null,
   is_active: true,
   created_by: MOCK_RESOURCE_ID,

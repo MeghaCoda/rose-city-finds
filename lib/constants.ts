@@ -16,6 +16,7 @@ export const FILTER_CHIPS = [
   { key: 'foodType', value: 'restaurant', label: 'Restaurant' },
   { key: 'accessType', value: 'pickup', label: 'Pickup' },
   { key: 'accessType', value: 'delivery', label: 'Delivery' },
+  { key: 'eligibility', value: 'anyone', label: 'Anyone' },
 ] as const;
 
 export const ROUTES = {

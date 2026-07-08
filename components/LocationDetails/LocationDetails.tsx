@@ -15,6 +15,7 @@ const LocationDetails = ({ item }: LocationDetailsProps) => {
             <p>{`${loc.city}, ${loc.state} ${loc.zip_code}`}</p>
             {loc.phone_number && <p>Phone Number: {loc.phone_number}</p>}
             {loc.neighborhood && <p>Neighborhood: {loc.neighborhood}</p>}
+            {loc.verification_status && <p>Verification Status: {loc.verification_status}</p>}
         </div>
     )
 }

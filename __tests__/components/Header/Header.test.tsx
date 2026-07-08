@@ -27,7 +27,7 @@ describe('Header', () => {
   it('renders the app title', async () => {
     mockGet.mockReturnValue(undefined)
     render(await Header())
-    expect(screen.getByText('Food Map')).toBeInTheDocument()
+    expect(screen.getByText('Rose City Finds')).toBeInTheDocument()
   })
 
   it('shows a sign in link when not authenticated', async () => {
@@ -47,6 +47,6 @@ describe('Header', () => {
   it('links the title to the home page', async () => {
     mockGet.mockReturnValue(undefined)
     render(await Header())
-    expect(screen.getByRole('link', { name: 'Food Map' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /Rose City Finds/ })).toHaveAttribute('href', '/')
   })
 })
