@@ -24,7 +24,7 @@ function formatLocation(row: PhysicalLocationRow): unknown {
     verification_status: res?.verification_status ?? null,
     expires_at: res?.expires_at ?? null,
     is_active: res?.is_active ?? null,
-    created_by: res?.created_by ?? '',
+    created_by: res?.created_by ?? null,
     created_at: res?.created_at ?? null,
     updated_at: res?.updated_at ?? null,
     physical_location: {

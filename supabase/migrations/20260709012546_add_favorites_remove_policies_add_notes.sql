@@ -13,10 +13,48 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE SCHEMA IF NOT EXISTS "public";
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
+
+
+
+
+
+
 
 
 ALTER SCHEMA "public" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+
+
+
 
 
 CREATE TYPE "public"."benefit_category" AS ENUM (
@@ -62,6 +100,15 @@ CREATE TYPE "public"."edit_status" AS ENUM (
 ALTER TYPE "public"."edit_status" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."verification_outcome" AS ENUM (
+    'verified',
+    'rejected'
+);
+
+
+ALTER TYPE "public"."verification_outcome" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."verification_status" AS ENUM (
     'pending',
     'verified',
@@ -72,17 +119,9 @@ CREATE TYPE "public"."verification_status" AS ENUM (
 ALTER TYPE "public"."verification_status" OWNER TO "postgres";
 
 
-CREATE TYPE "public"."verification_outcome" AS ENUM (
-    'verified',
-    'rejected'
-);
-
-
-ALTER TYPE "public"."verification_outcome" OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."current_user_role"() RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   select auth.jwt() -> 'app_metadata' ->> 'role';
 $$;
@@ -93,6 +132,7 @@ ALTER FUNCTION "public"."current_user_role"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 begin
   insert into public.users (id, email, username)
@@ -109,11 +149,9 @@ $$;
 ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 
-CREATE TRIGGER "on_auth_user_created" AFTER INSERT ON "auth"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
-
-
 CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   select (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin';
 $$;
@@ -140,6 +178,10 @@ CREATE TABLE IF NOT EXISTS "public"."community_notes" (
 ALTER TABLE "public"."community_notes" OWNER TO "postgres";
 
 
+COMMENT ON TABLE "public"."community_notes" IS 'DORMANT (v1): not wired into any UI yet, INSERT is admin-only and the self-delete-own-note policy has been removed. Explored as a rating/review mechanism, judged insufficient for a real public reviews feature (no moderation lifecycle, no edit history, no helpfulness voting, no resource-vs-location target split). Consider a dedicated reviews table for v2 instead.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."edit_history" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "resource_id" "uuid" NOT NULL,
@@ -156,20 +198,23 @@ CREATE TABLE IF NOT EXISTS "public"."edit_history" (
 ALTER TABLE "public"."edit_history" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."pending_edits" (
+COMMENT ON TABLE "public"."edit_history" IS 'DORMANT (v1): audit log for pending_edits approvals/rejections. No producer until pending_edits goes live.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."favorites" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
     "resource_id" "uuid" NOT NULL,
-    "submitted_by" "uuid" NOT NULL,
-    "status" "public"."edit_status" DEFAULT 'pending'::"public"."edit_status" NOT NULL,
-    "reviewed_by" "uuid",
-    "field_name" "text" NOT NULL,
-    "old_value" "text",
-    "new_value" "text",
     "created_at" timestamp with time zone DEFAULT "now"()
 );
 
 
-ALTER TABLE "public"."pending_edits" OWNER TO "postgres";
+ALTER TABLE "public"."favorites" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."favorites" IS 'DORMANT (v1): not wired into any UI yet. INSERT/UPDATE/DELETE are admin-only; users can still SELECT their own favorites and admins can SELECT all. Revisit when user-facing favoriting is actually built.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."online_access" (
@@ -194,6 +239,26 @@ CREATE TABLE IF NOT EXISTS "public"."other_access" (
 
 
 ALTER TABLE "public"."other_access" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."pending_edits" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "resource_id" "uuid" NOT NULL,
+    "submitted_by" "uuid" NOT NULL,
+    "status" "public"."edit_status" DEFAULT 'pending'::"public"."edit_status" NOT NULL,
+    "reviewed_by" "uuid",
+    "field_name" "text" NOT NULL,
+    "old_value" "text",
+    "new_value" "text",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."pending_edits" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."pending_edits" IS 'DORMANT (v1): not wired into any UI yet, INSERT is admin-only. Needs batch_id for multi-field edits, target_table/target_id polymorphism to support editing physical_locations, and a field_name allow-list before public use.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."physical_locations" (
@@ -269,7 +334,7 @@ CREATE TABLE IF NOT EXISTS "public"."resources" (
     "verification_status" "public"."verification_status" DEFAULT 'pending'::"public"."verification_status",
     "expires_at" "date",
     "is_active" boolean DEFAULT true,
-    "created_by" "uuid" NOT NULL,
+    "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "notes" "text",
@@ -295,6 +360,10 @@ CREATE TABLE IF NOT EXISTS "public"."submissions" (
 
 
 ALTER TABLE "public"."submissions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."submissions" IS 'DORMANT (v1): not wired into any UI yet, INSERT is admin-only. Alternate path for proposing new resources; overlaps with resources/pending_edits. Needs design decision before v2 launch.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."users" (
@@ -333,8 +402,13 @@ ALTER TABLE ONLY "public"."edit_history"
 
 
 
-ALTER TABLE ONLY "public"."pending_edits"
-    ADD CONSTRAINT "pending_edits_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."favorites"
+    ADD CONSTRAINT "favorites_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."favorites"
+    ADD CONSTRAINT "favorites_user_resource_unique" UNIQUE ("user_id", "resource_id");
 
 
 
@@ -345,6 +419,11 @@ ALTER TABLE ONLY "public"."online_access"
 
 ALTER TABLE ONLY "public"."other_access"
     ADD CONSTRAINT "other_access_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."pending_edits"
+    ADD CONSTRAINT "pending_edits_pkey" PRIMARY KEY ("id");
 
 
 
@@ -388,12 +467,21 @@ ALTER TABLE ONLY "public"."users"
 
 
 
+ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE DEFERRABLE;
+
+
+
 ALTER TABLE ONLY "public"."verification_events"
     ADD CONSTRAINT "verification_events_pkey" PRIMARY KEY ("id");
 
 
+ALTER TABLE ONLY "public"."verification_events"
+    ADD CONSTRAINT "verification_events_target_xor" CHECK ("num_nonnulls"("resource_id", "physical_location_id") = 1);
 
-CREATE UNIQUE INDEX "physical_locations_address_unique" ON "public"."physical_locations" USING "btree" ("lower"("address"), "lower"(COALESCE("address2", ''::"text")), "lower"("city"));
+
+
+CREATE UNIQUE INDEX "physical_locations_address_unique" ON "public"."physical_locations" USING "btree" ("lower"("address"), "lower"(COALESCE("address2", ''::"text")), "lower"("city"), "lower"("state"), "lower"("zip_code"));
 
 
 
@@ -431,6 +519,26 @@ ALTER TABLE ONLY "public"."edit_history"
 
 
 
+ALTER TABLE ONLY "public"."favorites"
+    ADD CONSTRAINT "favorites_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
+
+
+
+ALTER TABLE ONLY "public"."favorites"
+    ADD CONSTRAINT "favorites_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE DEFERRABLE;
+
+
+
+ALTER TABLE ONLY "public"."online_access"
+    ADD CONSTRAINT "online_access_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
+
+
+
+ALTER TABLE ONLY "public"."other_access"
+    ADD CONSTRAINT "other_access_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
+
+
+
 ALTER TABLE ONLY "public"."pending_edits"
     ADD CONSTRAINT "pending_edits_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
 
@@ -446,18 +554,8 @@ ALTER TABLE ONLY "public"."pending_edits"
 
 
 
-ALTER TABLE ONLY "public"."online_access"
-    ADD CONSTRAINT "online_access_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
-
-
-
-ALTER TABLE ONLY "public"."other_access"
-    ADD CONSTRAINT "other_access_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") DEFERRABLE;
-
-
-
 ALTER TABLE ONLY "public"."physical_locations"
-    ADD CONSTRAINT "physical_locations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") DEFERRABLE;
+    ADD CONSTRAINT "physical_locations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
 
 
 
@@ -482,7 +580,7 @@ ALTER TABLE ONLY "public"."resource_hours"
 
 
 ALTER TABLE ONLY "public"."resources"
-    ADD CONSTRAINT "resources_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") DEFERRABLE;
+    ADD CONSTRAINT "resources_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
 
 
 
@@ -508,6 +606,50 @@ ALTER TABLE ONLY "public"."verification_events"
 
 ALTER TABLE ONLY "public"."verification_events"
     ADD CONSTRAINT "verification_events_verified_by_fkey" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") DEFERRABLE;
+
+
+
+CREATE POLICY "Admins can add benefits" ON "public"."resource_benefits" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add eligibility" ON "public"."resource_eligibility" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add favorites" ON "public"."favorites" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add hours" ON "public"."resource_hours" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add locations" ON "public"."physical_locations" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add notes" ON "public"."community_notes" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add online access" ON "public"."online_access" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add other access" ON "public"."other_access" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add pending edits" ON "public"."pending_edits" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add resources" ON "public"."resources" FOR INSERT WITH CHECK ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can add submissions" ON "public"."submissions" FOR INSERT WITH CHECK ("public"."is_admin"());
 
 
 
@@ -551,15 +693,19 @@ CREATE POLICY "Admins can manage verification events" ON "public"."verification_
 
 
 
+CREATE POLICY "Admins can remove favorites" ON "public"."favorites" FOR DELETE USING ("public"."is_admin"());
+
+
+
 CREATE POLICY "Admins can update benefits" ON "public"."resource_benefits" FOR UPDATE USING ("public"."is_admin"());
 
 
 
-CREATE POLICY "Admins can update pending edits" ON "public"."pending_edits" FOR UPDATE USING ("public"."is_admin"());
-
-
-
 CREATE POLICY "Admins can update eligibility" ON "public"."resource_eligibility" FOR UPDATE USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can update favorites" ON "public"."favorites" FOR UPDATE USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 
@@ -579,6 +725,10 @@ CREATE POLICY "Admins can update other access" ON "public"."other_access" FOR UP
 
 
 
+CREATE POLICY "Admins can update pending edits" ON "public"."pending_edits" FOR UPDATE USING ("public"."is_admin"());
+
+
+
 CREATE POLICY "Admins can update resources" ON "public"."resources" FOR UPDATE USING ("public"."is_admin"());
 
 
@@ -595,11 +745,11 @@ CREATE POLICY "Admins can view all edit history" ON "public"."edit_history" FOR 
 
 
 
-CREATE POLICY "Admins can view all pending edits" ON "public"."pending_edits" FOR SELECT USING ("public"."is_admin"());
-
-
-
 CREATE POLICY "Admins can view all eligibility" ON "public"."resource_eligibility" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all favorites" ON "public"."favorites" FOR SELECT USING ("public"."is_admin"());
 
 
 
@@ -619,6 +769,10 @@ CREATE POLICY "Admins can view all other access" ON "public"."other_access" FOR 
 
 
 
+CREATE POLICY "Admins can view all pending edits" ON "public"."pending_edits" FOR SELECT USING ("public"."is_admin"());
+
+
+
 CREATE POLICY "Admins can view all resources" ON "public"."resources" FOR SELECT USING ("public"."is_admin"());
 
 
@@ -628,46 +782,6 @@ CREATE POLICY "Admins can view all submissions" ON "public"."submissions" FOR SE
 
 
 CREATE POLICY "Admins can view all users" ON "public"."users" FOR SELECT USING ("public"."is_admin"());
-
-
-
-CREATE POLICY "Logged-in users can add benefits" ON "public"."resource_benefits" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can add eligibility" ON "public"."resource_eligibility" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can add hours" ON "public"."resource_hours" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can add locations" ON "public"."physical_locations" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can add online access" ON "public"."online_access" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can add other access" ON "public"."other_access" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() IS NOT NULL));
-
-
-
-CREATE POLICY "Logged-in users can create submissions" ON "public"."submissions" FOR INSERT TO "authenticated" WITH CHECK (("submitted_by" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Logged-in users can post notes" ON "public"."community_notes" FOR INSERT TO "authenticated" WITH CHECK (("author_id" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Logged-in users can propose pending edits" ON "public"."pending_edits" FOR INSERT TO "authenticated" WITH CHECK (("submitted_by" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Logged-in users can submit resources" ON "public"."resources" FOR INSERT TO "authenticated" WITH CHECK ((("auth"."uid"() IS NOT NULL) AND ("verification_status" = 'pending'::"public"."verification_status")));
 
 
 
@@ -714,9 +828,9 @@ CREATE POLICY "Public can view other access for verified resources" ON "public".
 
 
 
-CREATE POLICY "Public can view verified locations" ON "public"."physical_locations" FOR SELECT USING ((EXISTS ( SELECT 1
+CREATE POLICY "Public can view verified locations" ON "public"."physical_locations" FOR SELECT USING ((("verification_status" = 'verified'::"public"."verification_status") AND (EXISTS ( SELECT 1
    FROM "public"."resources" "r"
-  WHERE (("r"."id" = "physical_locations"."resource_id") AND ("r"."verification_status" = 'verified'::"public"."verification_status") AND ("r"."is_active" = true)))));
+  WHERE (("r"."id" = "physical_locations"."resource_id") AND ("r"."verification_status" = 'verified'::"public"."verification_status") AND ("r"."is_active" = true))))));
 
 
 
@@ -724,11 +838,11 @@ CREATE POLICY "Public can view verified resources" ON "public"."resources" FOR S
 
 
 
-CREATE POLICY "Users can delete their own notes" ON "public"."community_notes" FOR DELETE TO "authenticated" USING (("author_id" = "auth"."uid"()));
-
-
-
 CREATE POLICY "Users can update their own profile" ON "public"."users" FOR UPDATE TO "authenticated" USING (("id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Users can view their own favorites" ON "public"."favorites" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
 
 
 
@@ -750,13 +864,16 @@ ALTER TABLE "public"."community_notes" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."edit_history" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."pending_edits" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."favorites" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."online_access" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."other_access" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."pending_edits" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."physical_locations" ENABLE ROW LEVEL SECURITY;
@@ -783,78 +900,339 @@ ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."verification_events" ENABLE ROW LEVEL SECURITY;
 
 
+
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+
+
+
+
 REVOKE USAGE ON SCHEMA "public" FROM PUBLIC;
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT SELECT ON TABLE "public"."community_notes" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."community_notes" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."edit_history" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."edit_history" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."pending_edits" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."pending_edits" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."online_access" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."online_access" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."other_access" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."other_access" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."physical_locations" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."physical_locations" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."resource_benefits" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."resource_benefits" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."resource_eligibility" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."resource_eligibility" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."resource_hours" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."resource_hours" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."resources" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."resources" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."submissions" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."submissions" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."users" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."users" TO "authenticated";
 
 
 
-GRANT SELECT ON TABLE "public"."verification_events" TO "anon";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."verification_events" TO "authenticated";
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."community_notes" TO "anon";
+GRANT ALL ON TABLE "public"."community_notes" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."community_notes" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."edit_history" TO "anon";
+GRANT ALL ON TABLE "public"."edit_history" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."edit_history" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."favorites" TO "anon";
+GRANT ALL ON TABLE "public"."favorites" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."favorites" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."online_access" TO "anon";
+GRANT ALL ON TABLE "public"."online_access" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."online_access" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."other_access" TO "anon";
+GRANT ALL ON TABLE "public"."other_access" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."other_access" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."pending_edits" TO "anon";
+GRANT ALL ON TABLE "public"."pending_edits" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."pending_edits" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."physical_locations" TO "anon";
+GRANT ALL ON TABLE "public"."physical_locations" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."physical_locations" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_benefits" TO "anon";
+GRANT ALL ON TABLE "public"."resource_benefits" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_benefits" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_eligibility" TO "anon";
+GRANT ALL ON TABLE "public"."resource_eligibility" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_eligibility" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_hours" TO "anon";
+GRANT ALL ON TABLE "public"."resource_hours" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resource_hours" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resources" TO "anon";
+GRANT ALL ON TABLE "public"."resources" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."resources" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."submissions" TO "anon";
+GRANT ALL ON TABLE "public"."submissions" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."submissions" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."users" TO "service_role";
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."verification_events" TO "anon";
+GRANT ALL ON TABLE "public"."verification_events" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."verification_events" TO "service_role";
+
+
+
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT UPDATE ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT UPDATE ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT UPDATE ON SEQUENCES TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--
+-- Dumped schema changes for auth and storage
+--
+
+CREATE OR REPLACE TRIGGER "on_auth_user_created" AFTER INSERT ON "auth"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
 
 RESET search_path;
-
 
 
 

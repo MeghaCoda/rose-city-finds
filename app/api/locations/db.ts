@@ -23,7 +23,7 @@ export type ResourceRow = {
   verification_status: 'pending' | 'verified' | 'rejected' | null;
   expires_at: string | null;
   is_active: boolean | null;
-  created_by: string;
+  created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -64,8 +64,7 @@ export async function fetchPhysicalLocations(): Promise<PhysicalLocationRow[]> {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from('physical_locations')
-    .select('*, resources(*), resource_hours(*)')
-    .eq('verification_status', 'verified');
+    .select('*, resources(*), resource_hours(*)');
   if (error) throw new Error(error.message);
   return data as PhysicalLocationRow[];
 }
