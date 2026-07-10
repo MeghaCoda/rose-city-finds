@@ -64,7 +64,7 @@ export const ResourcesSchema = z.object({
   verification_status: VerificationStatusSchema.nullable().optional(),
   expires_at: z.string().nullable().optional(), // date string e.g. "2025-12-31"
   is_active: z.boolean().nullable().optional(),
-  created_by: z.string().uuid(),
+  created_by: z.string().uuid().nullable(),
   created_at: z.string().datetime({ offset: true }).nullable().optional(),
   updated_at: z.string().datetime({ offset: true }).nullable().optional(),
 });
