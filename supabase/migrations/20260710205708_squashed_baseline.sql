@@ -1236,3 +1236,371 @@ RESET search_path;
 
 
 
+-- Add indexes on foreign key columns that are missing them.
+-- favorites.user_id is already covered as the leading column of
+-- favorites_user_resource_unique, so it's excluded here.
+
+CREATE INDEX "idx_community_notes_author_id" ON "public"."community_notes" USING "btree" ("author_id");
+CREATE INDEX "idx_community_notes_resource_id" ON "public"."community_notes" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_edit_history_approved_by" ON "public"."edit_history" USING "btree" ("approved_by");
+CREATE INDEX "idx_edit_history_changed_by" ON "public"."edit_history" USING "btree" ("changed_by");
+CREATE INDEX "idx_edit_history_edit_id" ON "public"."edit_history" USING "btree" ("edit_id");
+CREATE INDEX "idx_edit_history_resource_id" ON "public"."edit_history" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_favorites_resource_id" ON "public"."favorites" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_online_access_resource_id" ON "public"."online_access" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_other_access_resource_id" ON "public"."other_access" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_pending_edits_resource_id" ON "public"."pending_edits" USING "btree" ("resource_id");
+CREATE INDEX "idx_pending_edits_reviewed_by" ON "public"."pending_edits" USING "btree" ("reviewed_by");
+CREATE INDEX "idx_pending_edits_submitted_by" ON "public"."pending_edits" USING "btree" ("submitted_by");
+
+CREATE INDEX "idx_physical_locations_created_by" ON "public"."physical_locations" USING "btree" ("created_by");
+CREATE INDEX "idx_physical_locations_resource_id" ON "public"."physical_locations" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_resource_benefits_resource_id" ON "public"."resource_benefits" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_resource_eligibility_resource_id" ON "public"."resource_eligibility" USING "btree" ("resource_id");
+
+CREATE INDEX "idx_resource_hours_physical_location_id" ON "public"."resource_hours" USING "btree" ("physical_location_id");
+
+CREATE INDEX "idx_resources_created_by" ON "public"."resources" USING "btree" ("created_by");
+
+CREATE INDEX "idx_submissions_reviewed_by" ON "public"."submissions" USING "btree" ("reviewed_by");
+CREATE INDEX "idx_submissions_submitted_by" ON "public"."submissions" USING "btree" ("submitted_by");
+
+CREATE INDEX "idx_verification_events_physical_location_id" ON "public"."verification_events" USING "btree" ("physical_location_id");
+CREATE INDEX "idx_verification_events_resource_id" ON "public"."verification_events" USING "btree" ("resource_id");
+CREATE INDEX "idx_verification_events_verified_by" ON "public"."verification_events" USING "btree" ("verified_by");
+
+-- Keep resources.updated_at current on every update. The column's
+-- DEFAULT now() only fires on INSERT, so without this trigger it never
+-- moves again after row creation, even though admin edit/approval flows
+-- update the row repeatedly.
+CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
+
+CREATE TRIGGER "resources_set_updated_at"
+    BEFORE UPDATE ON "public"."resources"
+    FOR EACH ROW
+    EXECUTE FUNCTION "public"."set_updated_at"();
+
+-- Revoke TRUNCATE/MAINTAIN from anon/authenticated. RLS policies only
+-- filter SELECT/INSERT/UPDATE/DELETE; TRUNCATE and MAINTAIN (VACUUM,
+-- ANALYZE, CLUSTER, REFRESH MATERIALIZED VIEW) are gated by a coarse
+-- table-level grant that RLS never consults, so these roles picked
+-- them up as dead weight from Supabase's default "GRANT ALL ON
+-- TABLES" bootstrap.
+REVOKE TRUNCATE, MAINTAIN ON ALL TABLES IN SCHEMA "public" FROM "anon", "authenticated";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public"
+    REVOKE TRUNCATE, MAINTAIN ON TABLES FROM "anon", "authenticated";
+
+-- community_notes was missing the admin view/update policies every
+-- other admin-managed table has (e.g. resource_benefits), leaving
+-- admins unable to list or edit notes despite owning insert/delete.
+CREATE POLICY "Admins can view all notes" ON "public"."community_notes" FOR SELECT USING ("public"."is_admin"());
+
+CREATE POLICY "Admins can update notes" ON "public"."community_notes" FOR UPDATE USING ("public"."is_admin"());
+ALTER TABLE ONLY "public"."community_notes"
+    ADD CONSTRAINT "community_notes_rating_range" CHECK ((("rating" IS NULL) OR (("rating" >= 1) AND ("rating" <= 5))));
+
+
+ALTER TABLE ONLY "public"."community_notes" ALTER COLUMN "author_id" DROP NOT NULL;
+ALTER TABLE ONLY "public"."community_notes" DROP CONSTRAINT "community_notes_author_id_fkey";
+ALTER TABLE ONLY "public"."community_notes"
+    ADD CONSTRAINT "community_notes_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+
+ALTER TABLE ONLY "public"."edit_history" ALTER COLUMN "changed_by" DROP NOT NULL;
+ALTER TABLE ONLY "public"."edit_history" DROP CONSTRAINT "edit_history_changed_by_fkey";
+ALTER TABLE ONLY "public"."edit_history"
+    ADD CONSTRAINT "edit_history_changed_by_fkey" FOREIGN KEY ("changed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+ALTER TABLE ONLY "public"."edit_history" DROP CONSTRAINT "edit_history_approved_by_fkey";
+ALTER TABLE ONLY "public"."edit_history"
+    ADD CONSTRAINT "edit_history_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+
+ALTER TABLE ONLY "public"."pending_edits" ALTER COLUMN "submitted_by" DROP NOT NULL;
+ALTER TABLE ONLY "public"."pending_edits" DROP CONSTRAINT "pending_edits_submitted_by_fkey";
+ALTER TABLE ONLY "public"."pending_edits"
+    ADD CONSTRAINT "pending_edits_submitted_by_fkey" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+ALTER TABLE ONLY "public"."pending_edits" DROP CONSTRAINT "pending_edits_reviewed_by_fkey";
+ALTER TABLE ONLY "public"."pending_edits"
+    ADD CONSTRAINT "pending_edits_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+
+ALTER TABLE ONLY "public"."submissions" ALTER COLUMN "submitted_by" DROP NOT NULL;
+ALTER TABLE ONLY "public"."submissions" DROP CONSTRAINT "submissions_submitted_by_fkey";
+ALTER TABLE ONLY "public"."submissions"
+    ADD CONSTRAINT "submissions_submitted_by_fkey" FOREIGN KEY ("submitted_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+ALTER TABLE ONLY "public"."submissions" DROP CONSTRAINT "submissions_reviewed_by_fkey";
+ALTER TABLE ONLY "public"."submissions"
+    ADD CONSTRAINT "submissions_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+
+
+ALTER TABLE ONLY "public"."verification_events" DROP CONSTRAINT "verification_events_verified_by_fkey";
+ALTER TABLE ONLY "public"."verification_events"
+    ADD CONSTRAINT "verification_events_verified_by_fkey" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE SET NULL DEFERRABLE;
+ALTER TABLE ONLY "public"."users"
+    ADD COLUMN "is_active" boolean DEFAULT true NOT NULL,
+    ADD COLUMN "deactivated_at" timestamp with time zone;
+
+
+CREATE OR REPLACE FUNCTION "public"."deactivate_current_user"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+begin
+  update public.users
+  set is_active = false,
+      deactivated_at = now(),
+      email = 'deleted-' || "id"::text || '@deleted.rosecityfinds.invalid',
+      username = 'deleted-user-' || left("id"::text, 8)
+  where id = auth.uid()
+    and is_active = true;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."deactivate_current_user"() OWNER TO "postgres";
+
+
+GRANT EXECUTE ON FUNCTION "public"."deactivate_current_user"() TO "authenticated";
+-- resource_benefits was the pre-array-column design for resource benefit
+-- categories (one row per resource per benefit, with a per-benefit notes
+-- field). It was superseded by resources.benefits (benefit_category[]),
+-- which is what all current app code reads/writes. No cloud data exists
+-- in resource_benefits, so it's safe to drop outright (per-benefit notes
+-- have no equivalent on resources and are not being carried forward).
+DROP TABLE "public"."resource_benefits";
+-- current_user_role() is dead: nothing in RLS policies, app code, or other
+-- functions calls it (only is_admin() is actually used). Drop it rather than
+-- carry unused privileged surface area forward.
+DROP FUNCTION "public"."current_user_role"();
+
+-- is_admin() only reads auth.jwt(), which every role can already call
+-- directly -- SECURITY DEFINER bought it nothing but a wider privilege
+-- boundary than it needs.
+ALTER FUNCTION "public"."is_admin"() SECURITY INVOKER;
+
+-- Wrap is_admin() in every admin-only policy as (select is_admin()) so
+-- Postgres evaluates it once per query (initplan) instead of once per row,
+-- and scope those policies TO authenticated instead of leaving them open to
+-- PUBLIC (anon can never satisfy is_admin(), but the grant shouldn't imply
+-- otherwise).
+
+-- community_notes
+DROP POLICY "Admins can add notes" ON "public"."community_notes";
+CREATE POLICY "Admins can add notes" ON "public"."community_notes" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete any note" ON "public"."community_notes";
+CREATE POLICY "Admins can delete any note" ON "public"."community_notes" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update notes" ON "public"."community_notes";
+CREATE POLICY "Admins can update notes" ON "public"."community_notes" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all notes" ON "public"."community_notes";
+CREATE POLICY "Admins can view all notes" ON "public"."community_notes" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resource_eligibility
+DROP POLICY "Admins can add eligibility" ON "public"."resource_eligibility";
+CREATE POLICY "Admins can add eligibility" ON "public"."resource_eligibility" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete eligibility" ON "public"."resource_eligibility";
+CREATE POLICY "Admins can delete eligibility" ON "public"."resource_eligibility" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update eligibility" ON "public"."resource_eligibility";
+CREATE POLICY "Admins can update eligibility" ON "public"."resource_eligibility" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all eligibility" ON "public"."resource_eligibility";
+CREATE POLICY "Admins can view all eligibility" ON "public"."resource_eligibility" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- favorites
+DROP POLICY "Admins can add favorites" ON "public"."favorites";
+CREATE POLICY "Admins can add favorites" ON "public"."favorites" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can remove favorites" ON "public"."favorites";
+CREATE POLICY "Admins can remove favorites" ON "public"."favorites" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update favorites" ON "public"."favorites";
+CREATE POLICY "Admins can update favorites" ON "public"."favorites" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"())) WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all favorites" ON "public"."favorites";
+CREATE POLICY "Admins can view all favorites" ON "public"."favorites" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resource_hours
+DROP POLICY "Admins can add hours" ON "public"."resource_hours";
+CREATE POLICY "Admins can add hours" ON "public"."resource_hours" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete hours" ON "public"."resource_hours";
+CREATE POLICY "Admins can delete hours" ON "public"."resource_hours" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update hours" ON "public"."resource_hours";
+CREATE POLICY "Admins can update hours" ON "public"."resource_hours" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all hours" ON "public"."resource_hours";
+CREATE POLICY "Admins can view all hours" ON "public"."resource_hours" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- physical_locations
+DROP POLICY "Admins can add locations" ON "public"."physical_locations";
+CREATE POLICY "Admins can add locations" ON "public"."physical_locations" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete locations" ON "public"."physical_locations";
+CREATE POLICY "Admins can delete locations" ON "public"."physical_locations" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update locations" ON "public"."physical_locations";
+CREATE POLICY "Admins can update locations" ON "public"."physical_locations" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all locations" ON "public"."physical_locations";
+CREATE POLICY "Admins can view all locations" ON "public"."physical_locations" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- online_access
+DROP POLICY "Admins can add online access" ON "public"."online_access";
+CREATE POLICY "Admins can add online access" ON "public"."online_access" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete online access" ON "public"."online_access";
+CREATE POLICY "Admins can delete online access" ON "public"."online_access" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update online access" ON "public"."online_access";
+CREATE POLICY "Admins can update online access" ON "public"."online_access" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all online access" ON "public"."online_access";
+CREATE POLICY "Admins can view all online access" ON "public"."online_access" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- other_access
+DROP POLICY "Admins can add other access" ON "public"."other_access";
+CREATE POLICY "Admins can add other access" ON "public"."other_access" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete other access" ON "public"."other_access";
+CREATE POLICY "Admins can delete other access" ON "public"."other_access" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update other access" ON "public"."other_access";
+CREATE POLICY "Admins can update other access" ON "public"."other_access" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all other access" ON "public"."other_access";
+CREATE POLICY "Admins can view all other access" ON "public"."other_access" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- pending_edits
+DROP POLICY "Admins can add pending edits" ON "public"."pending_edits";
+CREATE POLICY "Admins can add pending edits" ON "public"."pending_edits" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update pending edits" ON "public"."pending_edits";
+CREATE POLICY "Admins can update pending edits" ON "public"."pending_edits" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all pending edits" ON "public"."pending_edits";
+CREATE POLICY "Admins can view all pending edits" ON "public"."pending_edits" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resources
+DROP POLICY "Admins can add resources" ON "public"."resources";
+CREATE POLICY "Admins can add resources" ON "public"."resources" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can delete resources" ON "public"."resources";
+CREATE POLICY "Admins can delete resources" ON "public"."resources" FOR DELETE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update resources" ON "public"."resources";
+CREATE POLICY "Admins can update resources" ON "public"."resources" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all resources" ON "public"."resources";
+CREATE POLICY "Admins can view all resources" ON "public"."resources" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- submissions
+DROP POLICY "Admins can add submissions" ON "public"."submissions";
+CREATE POLICY "Admins can add submissions" ON "public"."submissions" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can update submissions" ON "public"."submissions";
+CREATE POLICY "Admins can update submissions" ON "public"."submissions" FOR UPDATE TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all submissions" ON "public"."submissions";
+CREATE POLICY "Admins can view all submissions" ON "public"."submissions" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- edit_history
+DROP POLICY "Admins can insert edit history" ON "public"."edit_history";
+CREATE POLICY "Admins can insert edit history" ON "public"."edit_history" FOR INSERT TO "authenticated" WITH CHECK ((SELECT "public"."is_admin"()));
+
+DROP POLICY "Admins can view all edit history" ON "public"."edit_history";
+CREATE POLICY "Admins can view all edit history" ON "public"."edit_history" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- verification_events
+DROP POLICY "Admins can manage verification events" ON "public"."verification_events";
+CREATE POLICY "Admins can manage verification events" ON "public"."verification_events" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- users
+DROP POLICY "Admins can view all users" ON "public"."users";
+CREATE POLICY "Admins can view all users" ON "public"."users" FOR SELECT TO "authenticated" USING ((SELECT "public"."is_admin"()));
+-- These 8 tables gave admins full INSERT+UPDATE+DELETE+SELECT via 4 separate
+-- per-command policies each, purely as repetition -- collapse each set into
+-- one FOR ALL policy. (users, edit_history, pending_edits, and submissions
+-- are deliberately excluded: admins don't have full CRUD on those today, and
+-- merging would silently grant privileges -- e.g. deleting audit log rows on
+-- edit_history -- that were never intentionally given.)
+
+-- community_notes
+DROP POLICY "Admins can add notes" ON "public"."community_notes";
+DROP POLICY "Admins can delete any note" ON "public"."community_notes";
+DROP POLICY "Admins can update notes" ON "public"."community_notes";
+DROP POLICY "Admins can view all notes" ON "public"."community_notes";
+CREATE POLICY "Admins can manage notes" ON "public"."community_notes" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resource_eligibility
+DROP POLICY "Admins can add eligibility" ON "public"."resource_eligibility";
+DROP POLICY "Admins can delete eligibility" ON "public"."resource_eligibility";
+DROP POLICY "Admins can update eligibility" ON "public"."resource_eligibility";
+DROP POLICY "Admins can view all eligibility" ON "public"."resource_eligibility";
+CREATE POLICY "Admins can manage eligibility" ON "public"."resource_eligibility" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- favorites
+DROP POLICY "Admins can add favorites" ON "public"."favorites";
+DROP POLICY "Admins can remove favorites" ON "public"."favorites";
+DROP POLICY "Admins can update favorites" ON "public"."favorites";
+DROP POLICY "Admins can view all favorites" ON "public"."favorites";
+CREATE POLICY "Admins can manage favorites" ON "public"."favorites" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resource_hours
+DROP POLICY "Admins can add hours" ON "public"."resource_hours";
+DROP POLICY "Admins can delete hours" ON "public"."resource_hours";
+DROP POLICY "Admins can update hours" ON "public"."resource_hours";
+DROP POLICY "Admins can view all hours" ON "public"."resource_hours";
+CREATE POLICY "Admins can manage hours" ON "public"."resource_hours" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- physical_locations
+DROP POLICY "Admins can add locations" ON "public"."physical_locations";
+DROP POLICY "Admins can delete locations" ON "public"."physical_locations";
+DROP POLICY "Admins can update locations" ON "public"."physical_locations";
+DROP POLICY "Admins can view all locations" ON "public"."physical_locations";
+CREATE POLICY "Admins can manage locations" ON "public"."physical_locations" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- online_access
+DROP POLICY "Admins can add online access" ON "public"."online_access";
+DROP POLICY "Admins can delete online access" ON "public"."online_access";
+DROP POLICY "Admins can update online access" ON "public"."online_access";
+DROP POLICY "Admins can view all online access" ON "public"."online_access";
+CREATE POLICY "Admins can manage online access" ON "public"."online_access" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- other_access
+DROP POLICY "Admins can add other access" ON "public"."other_access";
+DROP POLICY "Admins can delete other access" ON "public"."other_access";
+DROP POLICY "Admins can update other access" ON "public"."other_access";
+DROP POLICY "Admins can view all other access" ON "public"."other_access";
+CREATE POLICY "Admins can manage other access" ON "public"."other_access" TO "authenticated" USING ((SELECT "public"."is_admin"()));
+
+-- resources
+DROP POLICY "Admins can add resources" ON "public"."resources";
+DROP POLICY "Admins can delete resources" ON "public"."resources";
+DROP POLICY "Admins can update resources" ON "public"."resources";
+DROP POLICY "Admins can view all resources" ON "public"."resources";
+CREATE POLICY "Admins can manage resources" ON "public"."resources" TO "authenticated" USING ((SELECT "public"."is_admin"()));

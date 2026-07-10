@@ -36,7 +36,7 @@ export type Database = {
     Tables: {
       community_notes: {
         Row: {
-          author_id: string
+          author_id: string | null
           body: string
           created_at: string | null
           id: string
@@ -45,7 +45,7 @@ export type Database = {
           resource_id: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           body: string
           created_at?: string | null
           id?: string
@@ -54,7 +54,7 @@ export type Database = {
           resource_id: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           body?: string
           created_at?: string | null
           id?: string
@@ -83,7 +83,7 @@ export type Database = {
         Row: {
           approved_by: string | null
           changed_at: string | null
-          changed_by: string
+          changed_by: string | null
           edit_id: string | null
           field_name: string
           id: string
@@ -94,7 +94,7 @@ export type Database = {
         Insert: {
           approved_by?: string | null
           changed_at?: string | null
-          changed_by: string
+          changed_by?: string | null
           edit_id?: string | null
           field_name: string
           id?: string
@@ -105,7 +105,7 @@ export type Database = {
         Update: {
           approved_by?: string | null
           changed_at?: string | null
-          changed_by?: string
+          changed_by?: string | null
           edit_id?: string | null
           field_name?: string
           id?: string
@@ -140,6 +140,42 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          resource_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          resource_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          resource_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -218,7 +254,7 @@ export type Database = {
           resource_id: string
           reviewed_by: string | null
           status: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string
+          submitted_by: string | null
         }
         Insert: {
           created_at?: string | null
@@ -229,7 +265,7 @@ export type Database = {
           resource_id: string
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string
+          submitted_by?: string | null
         }
         Update: {
           created_at?: string | null
@@ -240,7 +276,7 @@ export type Database = {
           resource_id?: string
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string
+          submitted_by?: string | null
         }
         Relationships: [
           {
@@ -341,35 +377,6 @@ export type Database = {
           },
         ]
       }
-      resource_benefits: {
-        Row: {
-          benefit: Database["public"]["Enums"]["benefit_category"]
-          id: string
-          notes: string | null
-          resource_id: string
-        }
-        Insert: {
-          benefit: Database["public"]["Enums"]["benefit_category"]
-          id?: string
-          notes?: string | null
-          resource_id: string
-        }
-        Update: {
-          benefit?: Database["public"]["Enums"]["benefit_category"]
-          id?: string
-          notes?: string | null
-          resource_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "resource_benefits_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       resource_eligibility: {
         Row: {
           id: string
@@ -456,7 +463,7 @@ export type Database = {
         Row: {
           benefits: Database["public"]["Enums"]["benefit_category"][] | null
           created_at: string | null
-          created_by: string
+          created_by: string | null
           description: string | null
           expires_at: string | null
           id: string
@@ -474,7 +481,7 @@ export type Database = {
         Insert: {
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
           created_at?: string | null
-          created_by: string
+          created_by?: string | null
           description?: string | null
           expires_at?: string | null
           id?: string
@@ -492,7 +499,7 @@ export type Database = {
         Update: {
           benefits?: Database["public"]["Enums"]["benefit_category"][] | null
           created_at?: string | null
-          created_by?: string
+          created_by?: string | null
           description?: string | null
           expires_at?: string | null
           id?: string
@@ -527,7 +534,7 @@ export type Database = {
           name: string
           reviewed_by: string | null
           status: Database["public"]["Enums"]["verification_status"]
-          submitted_by: string
+          submitted_by: string | null
         }
         Insert: {
           access_notes?: string | null
@@ -538,7 +545,7 @@ export type Database = {
           name: string
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
-          submitted_by: string
+          submitted_by?: string | null
         }
         Update: {
           access_notes?: string | null
@@ -549,7 +556,7 @@ export type Database = {
           name?: string
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
-          submitted_by?: string
+          submitted_by?: string | null
         }
         Relationships: [
           {
@@ -571,20 +578,26 @@ export type Database = {
       users: {
         Row: {
           created_at: string | null
+          deactivated_at: string | null
           email: string
           id: string
+          is_active: boolean
           username: string
         }
         Insert: {
           created_at?: string | null
+          deactivated_at?: string | null
           email: string
           id?: string
+          is_active?: boolean
           username: string
         }
         Update: {
           created_at?: string | null
+          deactivated_at?: string | null
           email?: string
           id?: string
+          is_active?: boolean
           username?: string
         }
         Relationships: []
@@ -649,7 +662,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      current_user_role: { Args: never; Returns: string }
+      deactivate_current_user: { Args: never; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
