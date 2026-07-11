@@ -13,13 +13,10 @@ import { useEffect } from "react";
 
 export interface Location {
   id: string;
-  physical_location: {
-    id: string;
-    address: string;
-    address2?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  };
+  address: string;
+  address2?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -90,8 +87,8 @@ interface ResourceMapProps<T extends Location> {
   selectedId?: string | null;
 }
 
-function hasCoordinates<T extends Location>(item: T): item is T & { physical_location: { latitude: number; longitude: number } } {
-  return Number.isFinite(item.physical_location.latitude) && Number.isFinite(item.physical_location.longitude);
+function hasCoordinates<T extends Location>(item: T): item is T & { latitude: number; longitude: number } {
+  return Number.isFinite(item.latitude) && Number.isFinite(item.longitude);
 }
 
 function ResourceMap<T extends Location>({ onSelect, data, selectedId }: ResourceMapProps<T>) {
@@ -106,8 +103,8 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
           <MarkerClusterGroup>
             {data.filter(hasCoordinates).map(item => (
                 <Marker
-                  key={item.physical_location.id}
-                  position={[item.physical_location.latitude, item.physical_location.longitude]}
+                  key={item.id}
+                  position={[item.latitude, item.longitude]}
                   icon={selectedId === item.id ? highlightIcon : normalIcon}
                   eventHandlers={{
                     click: () => {
@@ -116,8 +113,8 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
                   }}
                 >
                   <Popup>
-                    <p>{item.physical_location.address}</p>
-                    {item.physical_location.address2 && <p>{item.physical_location.address2}</p>}
+                    <p>{item.address}</p>
+                    {item.address2 && <p>{item.address2}</p>}
                   </Popup>
                 </Marker>
             ))}

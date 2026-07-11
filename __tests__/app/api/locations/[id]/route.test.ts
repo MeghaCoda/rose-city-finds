@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { PUT, DELETE } from '@/app/api/locations/[id]/route'
-import { mockResourceWithLocation, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
+import { mockLocationWithHours, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
 
 vi.mock('@/app/api/locations/service', () => ({
   updateLocation: vi.fn(),
@@ -19,8 +19,8 @@ const makeParams = (id: string) => ({ params: Promise.resolve({ id }) })
 describe('PUT /api/locations/[id]', () => {
   it('returns 200 with updated location on valid input', async () => {
     vi.mocked(updateLocation).mockResolvedValue({
-      ...mockResourceWithLocation,
-      physical_location: { ...mockResourceWithLocation.physical_location, address: '789 New Ave' },
+      ...mockLocationWithHours,
+      address: '789 New Ave',
     })
 
     const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
@@ -32,12 +32,12 @@ describe('PUT /api/locations/[id]', () => {
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.physical_location.address).toBe('789 New Ave')
+    expect(body.address).toBe('789 New Ave')
     expect(updateLocation).toHaveBeenCalledWith(MOCK_LOCATION_ID, { address: '789 New Ave' })
   })
 
   it('accepts an empty body (all fields optional in update)', async () => {
-    vi.mocked(updateLocation).mockResolvedValue(mockResourceWithLocation)
+    vi.mocked(updateLocation).mockResolvedValue(mockLocationWithHours)
 
     const req = new NextRequest(`http://localhost/api/locations/${MOCK_LOCATION_ID}`, {
       method: 'PUT',

@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import { PhysicalLocationsSchema, ResourceHoursSchema } from '@/schemas/zodSchema';
+import { LocationsSchema, LocationHoursSchema } from '@/schemas/zodSchema';
 
-export const PhysicalLocationInputSchema = PhysicalLocationsSchema
-  .omit({ id: true, created_at: true, name: true })
+export const LocationInputSchema = LocationsSchema
+  .omit({ id: true })
   .extend({
-    resource_hours: z.array(
-      ResourceHoursSchema.omit({ id: true, physical_location_id: true })
+    location_hours: z.array(
+      LocationHoursSchema.omit({ id: true, location_id: true })
     ).optional(),
   });
 
-export const PhysicalLocationUpdateSchema = PhysicalLocationInputSchema.partial();
+export const LocationUpdateSchema = LocationInputSchema.partial();
 
-export type PhysicalLocationInput = z.infer<typeof PhysicalLocationInputSchema>;
-export type PhysicalLocationUpdate = z.infer<typeof PhysicalLocationUpdateSchema>;
+export type LocationInput = z.infer<typeof LocationInputSchema>;
+export type LocationUpdate = z.infer<typeof LocationUpdateSchema>;

@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { getLocations, createLocation } from './service';
-import { PhysicalLocationInputSchema } from './schemas';
+import { LocationInputSchema } from './schemas';
 
 export async function GET(_req: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parsed = PhysicalLocationInputSchema.safeParse(body);
+    const parsed = LocationInputSchema.safeParse(body);
     if (!parsed.success) {
       return Response.json({ error: parsed.error.flatten() }, { status: 400 });
     }
