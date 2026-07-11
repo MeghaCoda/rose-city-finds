@@ -1,5 +1,5 @@
 import { parse } from 'csv-parse/sync';
-import { VALID_BENEFITS } from './uploadConstants';
+import { VALID_PRICE_TYPES, VALID_ELIGIBILITY_TYPES, VALID_VENUE_TYPES, DEFAULT_VENUE_TYPE } from './uploadConstants';
 import type { CSVOfferRow } from './actions';
 
 export type ParseError = { row: number; message: string };
@@ -37,15 +37,37 @@ export function parseOffersCSV(text: string): ParseResult {
     const name = get(rawRow, 'name');
     if (!name) rowErrors.push('name is required');
 
-    let benefits: string[] | undefined;
-    const benefitsRaw = get(rawRow, 'benefits');
-    if (benefitsRaw) {
-      const parts = benefitsRaw.split(',').map((s) => s.trim()).filter(Boolean);
-      const invalid = parts.filter((p) => !VALID_BENEFITS.has(p as never));
-      if (invalid.length > 0) {
-        rowErrors.push(`invalid benefit values: ${invalid.join(', ')}`);
+    const venueTypeRaw = get(rawRow, 'venue_type');
+    let venue_type = DEFAULT_VENUE_TYPE;
+    if (venueTypeRaw) {
+      if (!VALID_VENUE_TYPES.has(venueTypeRaw as never)) {
+        rowErrors.push(`invalid venue_type: ${venueTypeRaw}`);
       } else {
-        benefits = parts;
+        venue_type = venueTypeRaw;
+      }
+    }
+
+    let price_type: string[] | undefined;
+    const priceTypeRaw = get(rawRow, 'price_type');
+    if (priceTypeRaw) {
+      const parts = priceTypeRaw.split(',').map((s) => s.trim()).filter(Boolean);
+      const invalid = parts.filter((p) => !VALID_PRICE_TYPES.has(p as never));
+      if (invalid.length > 0) {
+        rowErrors.push(`invalid price_type values: ${invalid.join(', ')}`);
+      } else {
+        price_type = parts;
+      }
+    }
+
+    let eligibility: string[] | undefined;
+    const eligibilityRaw = get(rawRow, 'eligibility');
+    if (eligibilityRaw) {
+      const parts = eligibilityRaw.split(',').map((s) => s.trim()).filter(Boolean);
+      const invalid = parts.filter((p) => !VALID_ELIGIBILITY_TYPES.has(p as never));
+      if (invalid.length > 0) {
+        rowErrors.push(`invalid eligibility values: ${invalid.join(', ')}`);
+      } else {
+        eligibility = parts;
       }
     }
 
@@ -105,9 +127,11 @@ export function parseOffersCSV(text: string): ParseResult {
         rows.push({
           name,
           description: get(rawRow, 'description') || undefined,
+          venue_type,
           offer_desc: get(rawRow, 'offer_desc') || undefined,
           offer_source: get(rawRow, 'offer_source') || undefined,
-          benefits,
+          price_type,
+          eligibility,
           expires_at: get(rawRow, 'expires_at') || undefined,
           is_active,
           notes: get(rawRow, 'notes') || undefined,

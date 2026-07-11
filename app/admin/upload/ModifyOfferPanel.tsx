@@ -13,16 +13,19 @@ import {
   type UpdateOfferResult,
 } from './actions';
 import {
-  BENEFIT_CATEGORIES,
+  PRICE_TYPES,
+  ELIGIBILITY_TYPES,
+  VENUE_TYPES,
   selectClass,
   BACK_LABEL,
   LOADING_LABEL,
   OFFER_DETAILS_LEGEND,
   NAME_LABEL,
   DESCRIPTION_LABEL,
+  VENUE_TYPE_LABEL,
   OFFER_DESC_LABEL,
-  OFFER_SOURCE_LABEL,
-  BENEFITS_LABEL,
+  PRICE_TYPE_LABEL,
+  ELIGIBILITY_LABEL,
   EXPIRES_AT_LABEL,
   ACTIVE_STATUS_LABEL,
   VERIFICATION_STATUS_LABEL,
@@ -47,9 +50,10 @@ import {
 type EditState = {
   name: string;
   description: string;
+  venue_type: string;
   offer_desc: string;
-  offer_source: string;
-  benefits: string[];
+  price_type: string[];
+  eligibility: string[];
   expires_at: string;
   is_active: string;
   verification_status: string;
@@ -60,9 +64,10 @@ function offerToEditState(offer: OfferDetail): EditState {
   return {
     name: offer.name,
     description: offer.description ?? '',
+    venue_type: offer.venue_type,
     offer_desc: offer.offer_desc ?? '',
-    offer_source: offer.offer_source ?? '',
-    benefits: offer.benefits ?? [],
+    price_type: offer.price_type ?? [],
+    eligibility: offer.eligibility ?? [],
     expires_at: offer.expires_at ?? '',
     is_active: offer.is_active == null ? '' : String(offer.is_active),
     verification_status: offer.verification_status ?? '',
@@ -103,30 +108,43 @@ export function ModifyOfferPanel({ onBack }: { onBack: () => void }) {
     });
   };
 
-  const set = (key: keyof EditState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setEditState((s) => s && { ...s, [key]: e.target.value });
+  const set = (key: Exclude<keyof EditState, 'price_type' | 'eligibility'>) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setEditState((s) => s && { ...s, [key]: e.target.value });
 
-  const toggleBenefit = (value: string) =>
+  const togglePriceType = (value: string) =>
     setEditState((s) => {
       if (!s) return s;
       return {
         ...s,
-        benefits: s.benefits.includes(value)
-          ? s.benefits.filter((b) => b !== value)
-          : [...s.benefits, value],
+        price_type: s.price_type.includes(value)
+          ? s.price_type.filter((v) => v !== value)
+          : [...s.price_type, value],
+      };
+    });
+
+  const toggleEligibility = (value: string) =>
+    setEditState((s) => {
+      if (!s) return s;
+      return {
+        ...s,
+        eligibility: s.eligibility.includes(value)
+          ? s.eligibility.filter((v) => v !== value)
+          : [...s.eligibility, value],
       };
     });
 
   const handleSave = () => {
-    if (!editState || !selectedId) return;
+    if (!editState || !selectedId || !offerDetail) return;
     setSaveResult(null);
     startTransition(async () => {
-      const res = await updateOffer(selectedId, {
+      const res = await updateOffer(selectedId, offerDetail.offer_id, {
         name: editState.name,
         description: editState.description || null,
+        venue_type: editState.venue_type,
         offer_desc: editState.offer_desc || null,
-        offer_source: editState.offer_source || null,
-        benefits: editState.benefits.length > 0 ? editState.benefits : null,
+        price_type: editState.price_type.length > 0 ? editState.price_type : null,
+        eligibility: editState.eligibility.length > 0 ? editState.eligibility : null,
         expires_at: editState.expires_at || null,
         is_active:
           editState.is_active === 'true' ? true
@@ -200,26 +218,51 @@ export function ModifyOfferPanel({ onBack }: { onBack: () => void }) {
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-venue-type">{VENUE_TYPE_LABEL}</Label>
+              <select
+                id="edit-venue-type"
+                value={editState.venue_type}
+                onChange={set('venue_type')}
+                className={selectClass}
+              >
+                {VENUE_TYPES.map((v) => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-offer-desc">{OFFER_DESC_LABEL}</Label>
               <Input id="edit-offer-desc" value={editState.offer_desc} onChange={set('offer_desc')} />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-offer-source">{OFFER_SOURCE_LABEL}</Label>
-              <Input id="edit-offer-source" value={editState.offer_source} onChange={set('offer_source')} />
+              <Label>{PRICE_TYPE_LABEL}</Label>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {PRICE_TYPES.map((p) => (
+                  <label key={p.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editState.price_type.includes(p.value)}
+                      onChange={() => togglePriceType(p.value)}
+                    />
+                    {p.label}
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>{BENEFITS_LABEL}</Label>
+              <Label>{ELIGIBILITY_LABEL}</Label>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {BENEFIT_CATEGORIES.map((b) => (
-                  <label key={b.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                {ELIGIBILITY_TYPES.map((el) => (
+                  <label key={el.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={editState.benefits.includes(b.value)}
-                      onChange={() => toggleBenefit(b.value)}
+                      checked={editState.eligibility.includes(el.value)}
+                      onChange={() => toggleEligibility(el.value)}
                     />
-                    {b.label}
+                    {el.label}
                   </label>
                 ))}
               </div>
@@ -255,7 +298,7 @@ export function ModifyOfferPanel({ onBack }: { onBack: () => void }) {
               >
                 <option value="">{STATUS_NOT_SET}</option>
                 <option value="pending">{STATUS_PENDING}</option>
-                <option value="approved">{STATUS_APPROVED}</option>
+                <option value="verified">{STATUS_APPROVED}</option>
                 <option value="rejected">{STATUS_REJECTED}</option>
               </select>
             </div>

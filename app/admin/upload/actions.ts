@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { DEFAULT_VENUE_TYPE } from './uploadConstants';
 
 function makeAuthClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
@@ -75,7 +76,14 @@ export async function signOut() {
 }
 
 // ============================================================
-// Offers (resources)
+// Offers (businesses + their primary offer)
+//
+// This admin flow always creates one business with exactly one offer at a
+// time (see uploadOffers below), so "an offer" here means that
+// business+offer bundle -- selected/edited by the business's id and name,
+// matching how the UI already talks about "offers" as the thing being
+// managed. A business ending up with more than one offer (e.g. from manual
+// DB changes) isn't handled by this panel; it edits offers[0].
 // ============================================================
 
 export type OfferSummary = { id: string; name: string };
@@ -84,7 +92,7 @@ export async function getOffers(): Promise<OfferSummary[]> {
   const session = await requireAdmin();
   if (!session) return [];
   const db = makeUserClient(session.token);
-  const { data, error } = await db.from('resources').select('id, name').order('name');
+  const { data, error } = await db.from('businesses').select('id, name').order('name');
   if (error || !data) return [];
   return data as OfferSummary[];
 }
@@ -116,12 +124,14 @@ export type OfferLocation = {
 };
 
 export type OfferDetail = {
-  id: string;
+  id: string; // business id
+  offer_id: string; // this business's primary offer id
   name: string;
   description: string | null;
+  venue_type: string;
   offer_desc: string | null;
-  offer_source: string | null;
-  benefits: string[] | null;
+  price_type: string[];
+  eligibility: string[];
   verification_status: string | null;
   expires_at: string | null;
   is_active: boolean | null;
@@ -133,23 +143,29 @@ export async function getOfferWithLocations(id: string): Promise<OfferDetail | n
   const session = await requireAdmin();
   if (!session) return null;
   const db = makeUserClient(session.token);
-  const [offerRes, locRes] = await Promise.all([
-    db.from('resources').select('*').eq('id', id).single(),
-    db.from('physical_locations').select('*').eq('resource_id', id),
+  const [businessRes, offersRes, locRes] = await Promise.all([
+    db.from('businesses').select('*').eq('id', id).single(),
+    db.from('offers').select('*').eq('business_id', id).order('created_at', { ascending: true }),
+    db.from('locations').select('*').eq('business_id', id),
   ]);
-  if (offerRes.error || !offerRes.data) return null;
-  const o = offerRes.data;
+  if (businessRes.error || !businessRes.data) return null;
+  const b = businessRes.data;
+  const offer = (offersRes.data ?? [])[0] ?? null;
+  if (!offer) return null;
+
   return {
-    id: o.id,
-    name: o.name,
-    description: o.description ?? null,
-    offer_desc: o.offer_desc ?? null,
-    offer_source: o.offer_source ?? null,
-    benefits: o.benefits ?? null,
-    verification_status: o.verification_status ?? null,
-    expires_at: o.expires_at ?? null,
-    is_active: o.is_active ?? null,
-    notes: o.notes ?? null,
+    id: b.id,
+    offer_id: offer.id,
+    name: b.name,
+    description: b.description ?? null,
+    venue_type: b.venue_type,
+    offer_desc: offer.description ?? null,
+    price_type: offer.price_type ?? [],
+    eligibility: offer.eligibility ?? [],
+    verification_status: b.verification_status ?? null,
+    expires_at: offer.expires_at ?? null,
+    is_active: offer.is_active ?? null,
+    notes: b.notes ?? null,
     locations: (locRes.data ?? []).map((l: Omit<OfferLocation, 'hours'>) => ({ ...l, hours: [] })),
   };
 }
@@ -157,13 +173,15 @@ export async function getOfferWithLocations(id: string): Promise<OfferDetail | n
 export type UpdateOfferResult = { success?: true; error?: string };
 
 export async function updateOffer(
-  id: string,
+  businessId: string,
+  offerId: string,
   data: {
     name?: string;
     description?: string | null;
+    venue_type?: string;
     offer_desc?: string | null;
-    offer_source?: string | null;
-    benefits?: string[] | null;
+    price_type?: string[] | null;
+    eligibility?: string[] | null;
     expires_at?: string | null;
     is_active?: boolean | null;
     verification_status?: string | null;
@@ -173,8 +191,33 @@ export async function updateOffer(
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized. Please sign in as admin.' };
   const db = makeUserClient(session.token);
-  const { error } = await db.from('resources').update(data).eq('id', id);
-  if (error) return { error: error.message };
+
+  const { error: businessError } = await db
+    .from('businesses')
+    .update({
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.venue_type !== undefined && { venue_type: data.venue_type }),
+      ...(data.verification_status !== undefined && { verification_status: data.verification_status }),
+      ...(data.notes !== undefined && { notes: data.notes }),
+    })
+    .eq('id', businessId);
+  if (businessError) return { error: businessError.message };
+
+  const { error: offerError } = await db
+    .from('offers')
+    .update({
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.offer_desc !== undefined && { description: data.offer_desc }),
+      ...(data.price_type !== undefined && { price_type: data.price_type ?? [] }),
+      ...(data.eligibility !== undefined && { eligibility: data.eligibility ?? [] }),
+      ...(data.expires_at !== undefined && { expires_at: data.expires_at }),
+      ...(data.is_active !== undefined && { is_active: data.is_active }),
+      ...(data.verification_status !== undefined && { verification_status: data.verification_status }),
+    })
+    .eq('id', offerId);
+  if (offerError) return { error: offerError.message };
+
   return { success: true };
 }
 
@@ -183,12 +226,13 @@ export async function updateOffer(
 // ============================================================
 
 export type PendingResource = {
-  id: string;
+  id: string; // business id
+  offer_id: string;
   name: string;
   description: string | null;
   offer_desc: string | null;
-  offer_source: string | null;
-  benefits: string[] | null;
+  price_type: string[];
+  eligibility: string[];
   expires_at: string | null;
   is_active: boolean | null;
   notes: string | null;
@@ -202,83 +246,111 @@ export async function getPendingResources(): Promise<PendingResource[]> {
   if (!session) return [];
   const db = makeUserClient(session.token);
 
-  const { data: resources, error } = await db
-    .from('resources')
+  const { data: businesses, error } = await db
+    .from('businesses')
     .select('*')
     .eq('verification_status', 'pending')
     .order('created_at', { ascending: true });
 
-  if (error || !resources || resources.length === 0) return [];
+  if (error || !businesses || businesses.length === 0) return [];
 
-  const resourceIds = resources.map((r: { id: string }) => r.id);
-  const { data: locations } = await db
-    .from('physical_locations')
-    .select('*')
-    .in('resource_id', resourceIds);
+  const businessIds = businesses.map((b: { id: string }) => b.id);
+  const { data: offers } = await db.from('offers').select('*').in('business_id', businessIds);
+  const { data: locations } = await db.from('locations').select('*').in('business_id', businessIds);
 
   const locationIds = (locations ?? []).map((l: { id: string }) => l.id);
   const { data: hours } = locationIds.length > 0
-    ? await db.from('resource_hours').select('*').in('physical_location_id', locationIds)
+    ? await db.from('location_hours').select('*').in('location_id', locationIds)
     : { data: [] };
 
-  const hoursByLocation = ((hours ?? []) as Array<LocationHour & { physical_location_id: string }>).reduce<
+  const hoursByLocation = ((hours ?? []) as Array<LocationHour & { location_id: string }>).reduce<
     Record<string, LocationHour[]>
   >((acc, h) => {
-    if (!acc[h.physical_location_id]) acc[h.physical_location_id] = [];
-    acc[h.physical_location_id].push(h);
+    if (!acc[h.location_id]) acc[h.location_id] = [];
+    acc[h.location_id].push(h);
     return acc;
   }, {});
 
-  const locationsByResource = ((locations ?? []) as Array<{ resource_id: string } & Omit<OfferLocation, 'hours'>>).reduce<
+  const locationsByBusiness = ((locations ?? []) as Array<{ business_id: string } & Omit<OfferLocation, 'hours'>>).reduce<
     Record<string, OfferLocation[]>
   >((acc, loc) => {
-    if (!acc[loc.resource_id]) acc[loc.resource_id] = [];
-    acc[loc.resource_id].push({ ...loc, hours: hoursByLocation[loc.id] ?? [] });
+    if (!acc[loc.business_id]) acc[loc.business_id] = [];
+    acc[loc.business_id].push({ ...loc, hours: hoursByLocation[loc.id] ?? [] });
     return acc;
   }, {});
 
-  return resources.map((r: {
-    id: string; name: string; description: string | null; offer_desc: string | null;
-    offer_source: string | null; benefits: string[] | null; expires_at: string | null;
-    is_active: boolean | null; notes: string | null; verification_status: string; created_at: string | null;
-  }) => ({
-    id: r.id,
-    name: r.name,
-    description: r.description ?? null,
-    offer_desc: r.offer_desc ?? null,
-    offer_source: r.offer_source ?? null,
-    benefits: r.benefits ?? null,
-    expires_at: r.expires_at ?? null,
-    is_active: r.is_active ?? null,
-    notes: r.notes ?? null,
-    verification_status: r.verification_status,
-    created_at: r.created_at ?? null,
-    locations: locationsByResource[r.id] ?? [],
-  }));
+  type PendingOfferRow = {
+    id: string; business_id: string; description: string | null; price_type: string[] | null;
+    eligibility: string[] | null; expires_at: string | null; is_active: boolean | null;
+  };
+
+  const offerByBusiness = ((offers ?? []) as PendingOfferRow[]).reduce<Record<string, PendingOfferRow>>(
+    (acc, o) => {
+      if (!acc[o.business_id]) acc[o.business_id] = o;
+      return acc;
+    },
+    {}
+  );
+
+  return (businesses as Array<{
+    id: string; name: string; description: string | null; notes: string | null;
+    verification_status: string; created_at: string | null;
+  }>)
+    .filter((b) => offerByBusiness[b.id])
+    .map((b) => {
+      const offer = offerByBusiness[b.id];
+      return {
+        id: b.id,
+        offer_id: offer.id,
+        name: b.name,
+        description: b.description ?? null,
+        offer_desc: offer.description ?? null,
+        price_type: offer.price_type ?? [],
+        eligibility: offer.eligibility ?? [],
+        expires_at: offer.expires_at ?? null,
+        is_active: offer.is_active ?? null,
+        notes: b.notes ?? null,
+        verification_status: b.verification_status,
+        created_at: b.created_at ?? null,
+        locations: locationsByBusiness[b.id] ?? [],
+      };
+    });
 }
 
 export type ApproveResult = { success?: true; error?: string };
 
 export async function setResourceVerificationStatus(
-  id: string,
-  status: 'approved' | 'rejected'
+  businessId: string,
+  offerId: string,
+  status: 'verified' | 'rejected'
 ): Promise<ApproveResult> {
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized.' };
   const db = makeUserClient(session.token);
-  const { error } = await db.from('resources').update({ verification_status: status }).eq('id', id);
-  if (error) return { error: error.message };
+
+  const { error: businessError } = await db
+    .from('businesses')
+    .update({ verification_status: status })
+    .eq('id', businessId);
+  if (businessError) return { error: businessError.message };
+
+  const { error: offerError } = await db
+    .from('offers')
+    .update({ verification_status: status })
+    .eq('id', offerId);
+  if (offerError) return { error: offerError.message };
+
   return { success: true };
 }
 
 export async function setLocationVerificationStatus(
   id: string,
-  status: 'approved' | 'rejected'
+  status: 'verified' | 'rejected'
 ): Promise<ApproveResult> {
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized.' };
   const db = makeUserClient(session.token);
-  const { error } = await db.from('physical_locations').update({ verification_status: status }).eq('id', id);
+  const { error } = await db.from('locations').update({ verification_status: status }).eq('id', id);
   if (error) return { error: error.message };
   return { success: true };
 }
@@ -329,14 +401,21 @@ async function geocodeAddress(
 
 // ============================================================
 // CSV batch upload
+//
+// Each row creates one business + one offer (linked via offer_locations to
+// the row's location, if any). offer_source has no column of its own in the
+// new schema, so it's folded into the offer's notes as "Source: <url>"
+// rather than silently dropped.
 // ============================================================
 
 export type CSVOfferRow = {
   name: string;
   description?: string;
+  venue_type?: string;
   offer_desc?: string;
   offer_source?: string;
-  benefits?: string[];
+  price_type?: string[];
+  eligibility?: string[];
   expires_at?: string;
   is_active?: boolean;
   notes?: string;
@@ -381,13 +460,13 @@ export async function uploadOffers(
     const row = rows[i];
     const csvRow = i + 2; // row 1 is the header
 
-    const { data: existingResource } = await db
-      .from('resources')
+    const { data: existingBusiness } = await db
+      .from('businesses')
       .select('id')
       .ilike('name', row.name)
       .maybeSingle();
 
-    if (existingResource) {
+    if (existingBusiness) {
       skipped++;
       continue;
     }
@@ -396,7 +475,7 @@ export async function uploadOffers(
 
     if (row.location) {
       let locQuery = db
-        .from('physical_locations')
+        .from('locations')
         .select('id')
         .ilike('address', row.location.address)
         .ilike('city', row.location.city);
@@ -453,30 +532,48 @@ export async function uploadOffers(
       }
     }
 
-    const { data: resource, error: resError } = await db
-      .from('resources')
+    const { data: business, error: bizError } = await db
+      .from('businesses')
       .insert({
         name: row.name,
         description: row.description ?? null,
-        offer_desc: row.offer_desc ?? null,
-        offer_source: row.offer_source ?? null,
-        benefits: row.benefits ?? null,
-        expires_at: row.expires_at ?? null,
-        is_active: row.is_active ?? null,
-        notes: row.notes ?? null,
+        venue_type: row.venue_type ?? DEFAULT_VENUE_TYPE,
         verification_status: 'pending',
         created_by: adminUserId,
+        notes: row.notes ?? null,
       })
       .select('id')
       .single();
 
-    if (resError || !resource) {
-      return { created, skipped, error: `Failed to create offer "${row.name}": ${resError?.message}` };
+    if (bizError || !business) {
+      return { created, skipped, error: `Failed to create offer "${row.name}": ${bizError?.message}` };
+    }
+
+    const offerNotes = row.offer_source ? `Source: ${row.offer_source}` : null;
+    const { data: offer, error: offerError } = await db
+      .from('offers')
+      .insert({
+        business_id: business.id,
+        name: row.name,
+        description: row.offer_desc ?? null,
+        price_type: row.price_type ?? [],
+        eligibility: row.eligibility ?? [],
+        expires_at: row.expires_at ?? null,
+        is_active: row.is_active ?? true,
+        verification_status: 'pending',
+        created_by: adminUserId,
+        notes: offerNotes,
+      })
+      .select('id')
+      .single();
+
+    if (offerError || !offer) {
+      return { created, skipped, error: `Created business "${row.name}" but failed to create its offer: ${offerError?.message}` };
     }
 
     if (row.location) {
-      const { data: location, error: locError } = await db.from('physical_locations').insert({
-        resource_id: resource.id,
+      const { data: location, error: locError } = await db.from('locations').insert({
+        business_id: business.id,
         address: row.location.address,
         address2: row.location.address2 ?? null,
         city: row.location.city,
@@ -490,18 +587,30 @@ export async function uploadOffers(
         verification_status: 'pending',
         created_by: adminUserId,
       }).select('id').single();
-      if (locError) {
+      if (locError || !location) {
         return {
           created,
           skipped,
-          error: `Created offer "${row.name}" but failed to add its location: ${locError.message}`,
+          error: `Created offer "${row.name}" but failed to add its location: ${locError?.message}`,
+        };
+      }
+
+      const { error: linkError } = await db.from('offer_locations').insert({
+        offer_id: offer.id,
+        location_id: location.id,
+      });
+      if (linkError) {
+        return {
+          created,
+          skipped,
+          error: `Created offer "${row.name}" and its location but failed to link them: ${linkError.message}`,
         };
       }
 
       if (row.location.hours && row.location.hours.length > 0) {
-        const { error: hoursError } = await db.from('resource_hours').insert(
+        const { error: hoursError } = await db.from('location_hours').insert(
           row.location.hours.map((h) => ({
-            physical_location_id: location.id,
+            location_id: location.id,
             day: h.day,
             opens_at: h.opens_at,
             closes_at: h.closes_at,

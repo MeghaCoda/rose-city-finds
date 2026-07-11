@@ -6,15 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { uploadOffers, type CSVOfferRow, type BatchUploadResult } from './actions';
 import {
-  BENEFIT_CATEGORIES,
+  PRICE_TYPES,
+  ELIGIBILITY_TYPES,
+  VENUE_TYPES,
+  DEFAULT_VENUE_TYPE,
   DAYS_OF_WEEK,
   selectClass,
   OFFER_DETAILS_LEGEND,
   NAME_LABEL,
   DESCRIPTION_LABEL,
+  VENUE_TYPE_LABEL,
   OFFER_DESC_LABEL,
   OFFER_SOURCE_LABEL,
-  BENEFITS_LABEL,
+  PRICE_TYPE_LABEL,
+  ELIGIBILITY_LABEL,
   EXPIRES_AT_LABEL,
   ACTIVE_STATUS_LABEL,
   NOTES_LABEL,
@@ -60,9 +65,11 @@ type HourEntry = {
 type SingleEntryState = {
   name: string;
   description: string;
+  venue_type: string;
   offer_desc: string;
   offer_source: string;
-  benefits: string[];
+  price_type: string[];
+  eligibility: string[];
   expires_at: string;
   is_active: string;
   notes: string;
@@ -80,9 +87,11 @@ type SingleEntryState = {
 const emptyState: SingleEntryState = {
   name: '',
   description: '',
+  venue_type: DEFAULT_VENUE_TYPE,
   offer_desc: '',
   offer_source: '',
-  benefits: [],
+  price_type: [],
+  eligibility: [],
   expires_at: '',
   is_active: '',
   notes: '',
@@ -134,9 +143,11 @@ function toOfferRow(s: SingleEntryState): CSVOfferRow {
   return {
     name: s.name.trim(),
     description: s.description.trim() || undefined,
+    venue_type: s.venue_type || undefined,
     offer_desc: s.offer_desc.trim() || undefined,
     offer_source: s.offer_source.trim() || undefined,
-    benefits: s.benefits.length > 0 ? s.benefits : undefined,
+    price_type: s.price_type.length > 0 ? s.price_type : undefined,
+    eligibility: s.eligibility.length > 0 ? s.eligibility : undefined,
     expires_at: s.expires_at || undefined,
     is_active: s.is_active === 'true' ? true : s.is_active === 'false' ? false : undefined,
     notes: s.notes.trim() || undefined,
@@ -188,12 +199,20 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
         hours: s.hours.map((h, idx) => (idx === i ? { ...h, [key]: e.target.value } : h)),
       }));
 
-  const toggleBenefit = (value: string) =>
+  const togglePriceType = (value: string) =>
     setForm((s) => ({
       ...s,
-      benefits: s.benefits.includes(value)
-        ? s.benefits.filter((b) => b !== value)
-        : [...s.benefits, value],
+      price_type: s.price_type.includes(value)
+        ? s.price_type.filter((v) => v !== value)
+        : [...s.price_type, value],
+    }));
+
+  const toggleEligibility = (value: string) =>
+    setForm((s) => ({
+      ...s,
+      eligibility: s.eligibility.includes(value)
+        ? s.eligibility.filter((v) => v !== value)
+        : [...s.eligibility, value],
     }));
 
   const handleSubmit = () => {
@@ -251,6 +270,15 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
+          <Label htmlFor="single-venue-type">{VENUE_TYPE_LABEL}</Label>
+          <select id="single-venue-type" value={form.venue_type} onChange={set('venue_type')} className={selectClass}>
+            {VENUE_TYPES.map((v) => (
+              <option key={v.value} value={v.value}>{v.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="single-offer-desc">{OFFER_DESC_LABEL}</Label>
           <Input id="single-offer-desc" value={form.offer_desc} onChange={set('offer_desc')} />
         </div>
@@ -261,16 +289,32 @@ export function SingleEntrySection({ adminUserId }: { adminUserId: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label>{BENEFITS_LABEL}</Label>
+          <Label>{PRICE_TYPE_LABEL}</Label>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {BENEFIT_CATEGORIES.map((b) => (
-              <label key={b.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+            {PRICE_TYPES.map((p) => (
+              <label key={p.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={form.benefits.includes(b.value)}
-                  onChange={() => toggleBenefit(b.value)}
+                  checked={form.price_type.includes(p.value)}
+                  onChange={() => togglePriceType(p.value)}
                 />
-                {b.label}
+                {p.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>{ELIGIBILITY_LABEL}</Label>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {ELIGIBILITY_TYPES.map((el) => (
+              <label key={el.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.eligibility.includes(el.value)}
+                  onChange={() => toggleEligibility(el.value)}
+                />
+                {el.label}
               </label>
             ))}
           </div>

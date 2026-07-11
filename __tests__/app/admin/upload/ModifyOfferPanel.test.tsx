@@ -17,11 +17,13 @@ const MOCK_OFFERS = [
 
 const MOCK_DETAIL = {
   id: 'offer-1',
+  offer_id: 'offer-detail-1',
   name: 'Oregon Food Bank',
   description: 'Statewide food bank',
+  venue_type: 'food_bank',
   offer_desc: null,
-  offer_source: null,
-  benefits: ['free_food'],
+  price_type: ['free'],
+  eligibility: ['anyone'],
   verification_status: 'pending',
   expires_at: null,
   is_active: true,
@@ -71,7 +73,11 @@ describe('ModifyOfferPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: /save changes/i }))
 
     await waitFor(() => expect(updateOffer).toHaveBeenCalledOnce())
-    expect(updateOffer).toHaveBeenCalledWith('offer-1', expect.objectContaining({ name: 'Oregon Food Bank' }))
+    expect(updateOffer).toHaveBeenCalledWith(
+      'offer-1',
+      'offer-detail-1',
+      expect.objectContaining({ name: 'Oregon Food Bank' })
+    )
   })
 
   it('shows a success message after saving', async () => {

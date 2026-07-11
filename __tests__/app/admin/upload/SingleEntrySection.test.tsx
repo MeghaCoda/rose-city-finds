@@ -111,18 +111,19 @@ describe('SingleEntrySection', () => {
     expect(screen.getByLabelText(/name/i)).toHaveValue('Test Offer')
   })
 
-  it('toggles benefit checkboxes and includes them in the payload', async () => {
+  it('toggles price type and eligibility checkboxes and includes them in the payload', async () => {
     vi.mocked(uploadOffers).mockResolvedValue({ success: true, created: 1, skipped: 0 })
     render(<SingleEntrySection adminUserId={ADMIN_ID} />)
 
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Test Offer' } })
-    fireEvent.click(screen.getByLabelText('Free Food'))
-    fireEvent.click(screen.getByLabelText('SNAP Accepted'))
+    fireEvent.click(screen.getByLabelText('Free'))
+    fireEvent.click(screen.getByLabelText('Discount'))
+    fireEvent.click(screen.getByLabelText('SNAP'))
     fireEvent.click(screen.getByRole('button', { name: /submit/i }))
 
     await waitFor(() => expect(uploadOffers).toHaveBeenCalledOnce())
     expect(uploadOffers).toHaveBeenCalledWith(
-      [expect.objectContaining({ benefits: ['free_food', 'snap_accepted'] })],
+      [expect.objectContaining({ price_type: ['free', 'discount'], eligibility: ['snap'] })],
       ADMIN_ID
     )
   })
