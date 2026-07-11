@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
-import type { ResourceWithLocation } from '@/schemas/zodSchema'
+import type { LocationWithOffers } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
 import { useSearchFilters, type FilterKey } from '@/stores/searchFilters.store'
 import { toParams, hasFilterParams, parseParams } from '@/stores/searchFilters.url'
@@ -25,35 +25,33 @@ const TABS = [
   { value: 'map',  label: MAP_LABEL,  icon: <IconMap2 size={15} stroke={1.5} /> },
 ] satisfies { value: string; label: string; icon: React.ReactNode }[]
 
-// Maps a "price" filter chip value to the benefit_category values that satisfy it.
-const PRICE_BENEFITS: Record<string, string[]> = {
-  free: ['free_food', 'free_breakfast'],
-  discount: ['discounted_food', 'snap_accepted', 'student_discount', 'senior_discount', 'kids_eat_free', 'bogo', 'coupon'],
-  military_discount: ['military_discount'],
+// A location's offers directly carry price_type ('free'/'discount'), which
+// matches the "price" filter chip values 1:1.
+function matchesPrice(offers: LocationWithOffers['offers'], values: string[]) {
+  if (values.length === 0) return true
+  return offers.some((offer) => offer.price_type.some((pt) => (values as string[]).includes(pt)))
 }
 
-function matchesPrice(item: ResourceWithLocation, values: string[]) {
+// "accessType" chip values ('pickup'/'delivery') match the location's
+// food_formats 1:1.
+function matchesAccessType(item: LocationWithOffers, values: string[]) {
   if (values.length === 0) return true
-  const benefits: string[] = item.benefits ?? []
-  return values.some((v) => (PRICE_BENEFITS[v] ?? []).some((b) => benefits.includes(b)))
-}
-
-function matchesAccessType(values: string[]) {
-  if (values.length === 0) return true
-  // Resources with a physical_location only support pickup/dine-in today —
-  // there is no delivery/online-access flag on ResourceWithLocation yet.
-  return values.some((v) => v === 'pickup' || v === 'dine_in')
+  return values.some((v) => (item.food_formats as string[]).includes(v))
 }
 
 // price/foodType/accessType filters only apply once the URL actually carries
-// them — a bare /results shows every non-expired, active resource while the
-// store's own defaults are still propagating to the URL.
-function isVisible(item: ResourceWithLocation, urlFilters: { price: string[]; accessType: string[] } | null) {
-  if (item.is_active === false) return false
-  if (item.expires_at && new Date(item.expires_at).getTime() < Date.now()) return false
+// them — a bare /results shows every location with at least one non-expired,
+// active offer while the store's own defaults are still propagating to the URL.
+function isVisible(item: LocationWithOffers, urlFilters: { price: string[]; accessType: string[] } | null) {
+  const activeOffers = item.offers.filter((offer) => {
+    if (!offer.is_active) return false
+    if (offer.expires_at && new Date(offer.expires_at).getTime() < Date.now()) return false
+    return true
+  })
+  if (activeOffers.length === 0) return false
   if (!urlFilters) return true
-  if (!matchesPrice(item, urlFilters.price)) return false
-  if (!matchesAccessType(urlFilters.accessType)) return false
+  if (!matchesPrice(activeOffers, urlFilters.price)) return false
+  if (!matchesAccessType(item, urlFilters.accessType)) return false
   return true
 }
 
@@ -82,7 +80,7 @@ export function ResultsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  const { data: locations = [] } = useQuery<ResourceWithLocation[]>({
+  const { data: locations = [] } = useQuery<LocationWithOffers[]>({
     queryKey: ['locations'],
     queryFn: () => fetch(API_ROUTES.LOCATIONS).then((r) => {
       if (!r.ok) throw new Error(`Failed to fetch locations: ${r.status}`);
@@ -152,10 +150,10 @@ export function ResultsPage() {
           )}
           {visibleLocations.map((item) => (
             <ResultListItem
-              key={item.physical_location.id}
-              name={item.name}
-              address={[item.physical_location.address, item.physical_location.address2].filter(Boolean).join(', ')}
-              description={item.description ?? undefined}
+              key={item.id}
+              name={item.business.name}
+              address={[item.address, item.address2].filter(Boolean).join(', ')}
+              description={item.business.description ?? undefined}
               selected={selectedId === item.id}
               onClick={() => setSelectedId(item.id)}
               onMouseEnter={() => setSelectedId(item.id)}
@@ -171,7 +169,7 @@ export function ResultsPage() {
           <LocationMap
             data={visibleLocations}
             selectedId={selectedId}
-            onSelect={(item) => setSelectedId((item as ResourceWithLocation).id)}
+            onSelect={(item) => setSelectedId((item as LocationWithOffers).id)}
           />
         </div>
       </div>

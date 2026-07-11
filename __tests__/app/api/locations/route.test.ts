@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { GET, POST } from '@/app/api/locations/route'
-import { mockResourceWithLocation, MOCK_RESOURCE_ID } from '@/__mocks__/mockData'
+import { mockLocationWithOffers, mockLocationWithHours, MOCK_BUSINESS_ID, MOCK_LOCATION_ID } from '@/__mocks__/mockData'
 
 vi.mock('@/app/api/locations/service', () => ({
   getLocations: vi.fn(),
@@ -16,7 +16,7 @@ beforeEach(() => {
 
 describe('GET /api/locations', () => {
   it('returns 200 with locations array on success', async () => {
-    vi.mocked(getLocations).mockResolvedValue([mockResourceWithLocation])
+    vi.mocked(getLocations).mockResolvedValue([mockLocationWithOffers])
 
     const req = new NextRequest('http://localhost/api/locations')
     const response = await GET(req)
@@ -24,7 +24,7 @@ describe('GET /api/locations', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body).toHaveLength(1)
-    expect(body[0].id).toBe(MOCK_RESOURCE_ID)
+    expect(body[0].id).toBe(MOCK_LOCATION_ID)
   })
 
   it('returns 200 with empty array when no locations exist', async () => {
@@ -61,7 +61,7 @@ describe('GET /api/locations', () => {
 
 describe('POST /api/locations', () => {
   const validInput = {
-    resource_id: MOCK_RESOURCE_ID,
+    business_id: MOCK_BUSINESS_ID,
     address: '456 Oak Ave',
     city: 'Portland',
     state: 'OR',
@@ -69,13 +69,14 @@ describe('POST /api/locations', () => {
     latitude: 45.5,
     longitude: -122.7,
     phone_number: '503-555-9999',
+    food_formats: ['pickup'],
     verification_status: 'pending',
   }
 
   it('returns 201 with created location on valid input', async () => {
     vi.mocked(createLocation).mockResolvedValue({
-      ...mockResourceWithLocation,
-      physical_location: { ...mockResourceWithLocation.physical_location, address: '456 Oak Ave' },
+      ...mockLocationWithHours,
+      address: '456 Oak Ave',
     })
 
     const req = new NextRequest('http://localhost/api/locations', {
@@ -87,7 +88,7 @@ describe('POST /api/locations', () => {
 
     expect(response.status).toBe(201)
     const body = await response.json()
-    expect(body.physical_location.address).toBe('456 Oak Ave')
+    expect(body.address).toBe('456 Oak Ave')
   })
 
   it('returns 400 when required fields are missing', async () => {

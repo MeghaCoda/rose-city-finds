@@ -7,10 +7,14 @@ import {
 } from '@/schemas/zodSchema'
 import type { VerificationEvent } from '@/schemas/zodSchema'
 import {
-  PhysicalLocationInputSchema,
-  PhysicalLocationUpdateSchema,
+  LocationInputSchema,
+  LocationUpdateSchema,
 } from '@/app/api/locations/schemas'
-import { mockLocation, MOCK_LOCATION_ID, MOCK_RESOURCE_ID, MOCK_HOURS_ID } from '@/__mocks__/mockData'
+import { mockLocation, mockLocationWithOffers, MOCK_LOCATION_ID, MOCK_RESOURCE_ID, MOCK_HOURS_ID } from '@/__mocks__/mockData'
+
+// Input-shaped fixture for LocationInputSchema/LocationUpdateSchema: the
+// writable location fields, without id/business/offers/location_hours.
+const { id: _mockLocId, business: _mockBusiness, offers: _mockOffers, location_hours: _mockLocHours, ...mockLocationInput } = mockLocationWithOffers
 
 describe('PhysicalLocationsSchema', () => {
   it('accepts a valid location', () => {
@@ -90,55 +94,51 @@ describe('PhysicalLocationsSchema', () => {
   })
 })
 
-describe('PhysicalLocationInputSchema', () => {
-  it('accepts valid input without id and created_at', () => {
-    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
-    expect(PhysicalLocationInputSchema.safeParse(input).success).toBe(true)
+describe('LocationInputSchema', () => {
+  it('accepts valid input without id', () => {
+    expect(LocationInputSchema.safeParse(mockLocationInput).success).toBe(true)
   })
 
   it('rejects missing required address', () => {
-    const { id: _id, created_at: _ca, address: _addr, resource_hours: _rh, ...rest } = mockLocation
-    expect(PhysicalLocationInputSchema.safeParse(rest).success).toBe(false)
+    const { address: _addr, ...rest } = mockLocationInput
+    expect(LocationInputSchema.safeParse(rest).success).toBe(false)
   })
 
-  it('rejects missing required resource_id', () => {
-    const { id: _id, created_at: _ca, resource_id: _rid, resource_hours: _rh, ...rest } = mockLocation
-    expect(PhysicalLocationInputSchema.safeParse(rest).success).toBe(false)
+  it('rejects missing required business_id', () => {
+    const { business_id: _bid, ...rest } = mockLocationInput
+    expect(LocationInputSchema.safeParse(rest).success).toBe(false)
   })
 
-  it('accepts resource_hours array', () => {
-    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
-    const result = PhysicalLocationInputSchema.safeParse({
-      ...input,
-      resource_hours: [
+  it('accepts location_hours array', () => {
+    const result = LocationInputSchema.safeParse({
+      ...mockLocationInput,
+      location_hours: [
         { day: 'monday', opens_at: '08:00', closes_at: '17:00' },
       ],
     })
     expect(result.success).toBe(true)
   })
 
-  it('accepts missing resource_hours (optional)', () => {
-    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
-    expect(PhysicalLocationInputSchema.safeParse(input).success).toBe(true)
+  it('accepts missing location_hours (optional)', () => {
+    expect(LocationInputSchema.safeParse(mockLocationInput).success).toBe(true)
   })
 
-  it('rejects invalid opens_at time format in resource_hours', () => {
-    const { id: _id, created_at: _ca, resource_hours: _rh, ...input } = mockLocation
-    const result = PhysicalLocationInputSchema.safeParse({
-      ...input,
-      resource_hours: [{ day: 'monday', opens_at: '8:00', closes_at: '17:00' }],
+  it('rejects invalid opens_at time format in location_hours', () => {
+    const result = LocationInputSchema.safeParse({
+      ...mockLocationInput,
+      location_hours: [{ day: 'monday', opens_at: '8:00', closes_at: '17:00' }],
     })
     expect(result.success).toBe(false)
   })
 })
 
-describe('PhysicalLocationUpdateSchema', () => {
+describe('LocationUpdateSchema', () => {
   it('accepts an empty object (all fields optional)', () => {
-    expect(PhysicalLocationUpdateSchema.safeParse({}).success).toBe(true)
+    expect(LocationUpdateSchema.safeParse({}).success).toBe(true)
   })
 
   it('accepts a partial update with just address', () => {
-    const result = PhysicalLocationUpdateSchema.safeParse({ address: '456 New Ave' })
+    const result = LocationUpdateSchema.safeParse({ address: '456 New Ave' })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.address).toBe('456 New Ave')
@@ -146,17 +146,17 @@ describe('PhysicalLocationUpdateSchema', () => {
   })
 
   it('accepts a partial update with coordinates', () => {
-    const result = PhysicalLocationUpdateSchema.safeParse({ latitude: 45.5, longitude: -122.7 })
+    const result = LocationUpdateSchema.safeParse({ latitude: 45.5, longitude: -122.7 })
     expect(result.success).toBe(true)
   })
 
   it('rejects invalid field type even in partial update', () => {
-    expect(PhysicalLocationUpdateSchema.safeParse({ latitude: 'not-a-number' }).success).toBe(false)
+    expect(LocationUpdateSchema.safeParse({ latitude: 'not-a-number' }).success).toBe(false)
   })
 
-  it('accepts partial update with resource_hours', () => {
-    const result = PhysicalLocationUpdateSchema.safeParse({
-      resource_hours: [{ day: 'tuesday', opens_at: '09:00', closes_at: '18:00' }],
+  it('accepts partial update with location_hours', () => {
+    const result = LocationUpdateSchema.safeParse({
+      location_hours: [{ day: 'tuesday', opens_at: '09:00', closes_at: '18:00' }],
     })
     expect(result.success).toBe(true)
   })

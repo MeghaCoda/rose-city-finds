@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import Map from '@/components/Map/Map'
-import { mockResourceWithLocation } from '@/__mocks__/mockData'
 
 // Mock LocationMap so tests don't require Leaflet (a DOM canvas library).
 // The mock exposes a button that calls onSelect with the mock location.
 vi.mock('@/components/LocationMap', async () => {
-  const { mockResourceWithLocation } = await import('@/__mocks__/mockData')
+  const { mockLocationWithOffers } = await import('@/__mocks__/mockData')
   return {
     default: ({ onSelect }: { onSelect: (loc: unknown) => void }) => (
-      <button data-testid="map-select-btn" onClick={() => onSelect(mockResourceWithLocation)}>
+      <button data-testid="map-select-btn" onClick={() => onSelect(mockLocationWithOffers)}>
         Select Location
       </button>
     ),
@@ -19,10 +18,10 @@ vi.mock('@/components/LocationMap', async () => {
 // Mock useQuery to avoid needing a QueryClientProvider and real fetch calls.
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  const { mockResourceWithLocation } = await import('@/__mocks__/mockData')
+  const { mockLocationWithOffers } = await import('@/__mocks__/mockData')
   return {
     ...actual,
-    useQuery: vi.fn().mockReturnValue({ data: [mockResourceWithLocation], isLoading: false }),
+    useQuery: vi.fn().mockReturnValue({ data: [mockLocationWithOffers], isLoading: false }),
   }
 })
 

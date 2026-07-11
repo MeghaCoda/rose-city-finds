@@ -2,14 +2,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import LocationMap from "@/components/LocationMap";
-import type { ResourceWithLocation } from "@/schemas/zodSchema";
+import type { LocationWithOffers } from "@/schemas/zodSchema";
 import LocationDetails from "../LocationDetails/LocationDetails";
 import SearchBar from "../SearchBar/SearchBar";
 
 const Map = () => {
-    const [selectedItem, setSelectedItem] = useState<ResourceWithLocation | undefined>()
+    const [selectedItem, setSelectedItem] = useState<LocationWithOffers | undefined>()
 
-    const { data: locations = [] } = useQuery<ResourceWithLocation[]>({
+    const { data: locations = [] } = useQuery<LocationWithOffers[]>({
         queryKey: ["locations"],
         queryFn: () => fetch("/api/locations").then((res) => res.json()),
         staleTime: 5 * 60 * 1000,
@@ -27,7 +27,7 @@ const Map = () => {
 
                 <div className="flex-1 min-w-0">
                     <LocationMap
-                        onSelect={(item) => setSelectedItem(item as ResourceWithLocation)}
+                        onSelect={(item) => setSelectedItem(item as LocationWithOffers)}
                         data={locations}
                     />
                 </div>
