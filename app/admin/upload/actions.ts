@@ -8,10 +8,6 @@ function makeAuthClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 }
 
-function makeAdminClient() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
-}
-
 function makeUserClient(token: string) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -87,7 +83,7 @@ export type OfferSummary = { id: string; name: string };
 export async function getOffers(): Promise<OfferSummary[]> {
   const session = await requireAdmin();
   if (!session) return [];
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   const { data, error } = await db.from('resources').select('id, name').order('name');
   if (error || !data) return [];
   return data as OfferSummary[];
@@ -136,7 +132,7 @@ export type OfferDetail = {
 export async function getOfferWithLocations(id: string): Promise<OfferDetail | null> {
   const session = await requireAdmin();
   if (!session) return null;
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   const [offerRes, locRes] = await Promise.all([
     db.from('resources').select('*').eq('id', id).single(),
     db.from('physical_locations').select('*').eq('resource_id', id),
@@ -176,7 +172,7 @@ export async function updateOffer(
 ): Promise<UpdateOfferResult> {
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized. Please sign in as admin.' };
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   const { error } = await db.from('resources').update(data).eq('id', id);
   if (error) return { error: error.message };
   return { success: true };
@@ -204,7 +200,7 @@ export type PendingResource = {
 export async function getPendingResources(): Promise<PendingResource[]> {
   const session = await requireAdmin();
   if (!session) return [];
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
 
   const { data: resources, error } = await db
     .from('resources')
@@ -269,7 +265,7 @@ export async function setResourceVerificationStatus(
 ): Promise<ApproveResult> {
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized.' };
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   const { error } = await db.from('resources').update({ verification_status: status }).eq('id', id);
   if (error) return { error: error.message };
   return { success: true };
@@ -281,7 +277,7 @@ export async function setLocationVerificationStatus(
 ): Promise<ApproveResult> {
   const session = await requireAdmin();
   if (!session) return { error: 'Unauthorized.' };
-  const db = makeAdminClient();
+  const db = makeUserClient(session.token);
   const { error } = await db.from('physical_locations').update({ verification_status: status }).eq('id', id);
   if (error) return { error: error.message };
   return { success: true };
