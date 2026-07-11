@@ -881,11 +881,11 @@ describe('List / Map view toggle', () => {
 //    Fix: add .or('resources.expires_at.is.null,resources.expires_at.gt.now()')
 //    to the Supabase query.
 //
-// 5. ONLINE-ONLY RESOURCES ARE COMPLETELY INVISIBLE
-//    r15 has online_access only — no physical location — so it is never returned
-//    by /api/locations and cannot be found or displayed by users. If online
-//    delivery/access is a supported concept, the API and UI need a separate
-//    data fetch and rendering path for these resources.
+// 5. RESOURCES WITH NO PHYSICAL LOCATION ARE COMPLETELY INVISIBLE
+//    r15 has no physical location row, so it is never returned by
+//    /api/locations and cannot be found or displayed by users. If online-only
+//    or non-physical access is a supported concept, the API and UI need a
+//    separate data fetch and rendering path for these resources.
 //
 // 6. DUPLICATE REACT KEYS FOR MULTI-LOCATION RESOURCES
 //    r1 (Hawthorne Community Pantry) has two physical locations (pl1, pl2).
