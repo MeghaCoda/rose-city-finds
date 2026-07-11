@@ -34,184 +34,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      community_notes: {
-        Row: {
-          author_id: string | null
-          body: string
-          created_at: string | null
-          id: string
-          is_flagged: boolean | null
-          rating: number | null
-          resource_id: string
-        }
-        Insert: {
-          author_id?: string | null
-          body: string
-          created_at?: string | null
-          id?: string
-          is_flagged?: boolean | null
-          rating?: number | null
-          resource_id: string
-        }
-        Update: {
-          author_id?: string | null
-          body?: string
-          created_at?: string | null
-          id?: string
-          is_flagged?: boolean | null
-          rating?: number | null
-          resource_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "community_notes_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_notes_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      edit_history: {
-        Row: {
-          approved_by: string | null
-          changed_at: string | null
-          changed_by: string | null
-          edit_id: string | null
-          field_name: string
-          id: string
-          new_value: string | null
-          old_value: string | null
-          resource_id: string
-        }
-        Insert: {
-          approved_by?: string | null
-          changed_at?: string | null
-          changed_by?: string | null
-          edit_id?: string | null
-          field_name: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id: string
-        }
-        Update: {
-          approved_by?: string | null
-          changed_at?: string | null
-          changed_by?: string | null
-          edit_id?: string | null
-          field_name?: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "edit_history_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edit_history_changed_by_fkey"
-            columns: ["changed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edit_history_edit_id_fkey"
-            columns: ["edit_id"]
-            isOneToOne: false
-            referencedRelation: "pending_edits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "edit_history_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      favorites: {
-        Row: {
-          created_at: string | null
-          id: string
-          resource_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          resource_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          resource_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "favorites_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "favorites_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      online_access: {
-        Row: {
-          created_at: string | null
-          id: string
-          instructions: string | null
-          resource_id: string
-          url: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          instructions?: string | null
-          resource_id: string
-          url: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          instructions?: string | null
-          resource_id?: string
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "online_access_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       other_access: {
         Row: {
           created_at: string | null
@@ -240,64 +62,6 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pending_edits: {
-        Row: {
-          created_at: string | null
-          field_name: string
-          id: string
-          new_value: string | null
-          old_value: string | null
-          resource_id: string
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["edit_status"]
-          submitted_by: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          field_name: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          field_name?: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          resource_id?: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["edit_status"]
-          submitted_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pending_edits_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "resources"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pending_edits_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pending_edits_submitted_by_fkey"
-            columns: ["submitted_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -524,57 +288,6 @@ export type Database = {
           },
         ]
       }
-      submissions: {
-        Row: {
-          access_notes: string | null
-          benefits: Database["public"]["Enums"]["benefit_category"][] | null
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["verification_status"]
-          submitted_by: string | null
-        }
-        Insert: {
-          access_notes?: string | null
-          benefits?: Database["public"]["Enums"]["benefit_category"][] | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["verification_status"]
-          submitted_by?: string | null
-        }
-        Update: {
-          access_notes?: string | null
-          benefits?: Database["public"]["Enums"]["benefit_category"][] | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["verification_status"]
-          submitted_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "submissions_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "submissions_submitted_by_fkey"
-            columns: ["submitted_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       users: {
         Row: {
           created_at: string | null
@@ -687,7 +400,6 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
-      edit_status: "pending" | "approved" | "rejected"
       verification_outcome: "verified" | "rejected"
       verification_status: "pending" | "verified" | "rejected"
     }
@@ -843,7 +555,6 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
-      edit_status: ["pending", "approved", "rejected"],
       verification_outcome: ["verified", "rejected"],
       verification_status: ["pending", "verified", "rejected"],
     },
