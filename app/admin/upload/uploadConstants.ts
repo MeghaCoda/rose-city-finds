@@ -8,20 +8,39 @@ export const DAYS_OF_WEEK = [
   { value: 'sunday', label: 'Sunday' },
 ] as const;
 
-export const BENEFIT_CATEGORIES = [
-  { value: 'free_food', label: 'Free Food' },
-  { value: 'discounted_food', label: 'Discounted Food' },
-  { value: 'snap_accepted', label: 'SNAP Accepted' },
-  { value: 'student_discount', label: 'Student Discount' },
-  { value: 'senior_discount', label: 'Senior Discount' },
-  { value: 'kids_eat_free', label: 'Kids Eat Free' },
-  { value: 'bogo', label: 'BOGO' },
-  { value: 'coupon', label: 'Coupon' },
-  { value: 'free_breakfast', label: 'Free Breakfast' },
+export const PRICE_TYPES = [
+  { value: 'free', label: 'Free' },
+  { value: 'discount', label: 'Discount' },
+] as const;
+
+export const VALID_PRICE_TYPES = new Set(PRICE_TYPES.map((p) => p.value));
+
+export const ELIGIBILITY_TYPES = [
+  { value: 'anyone', label: 'Anyone' },
+  { value: 'student', label: 'Student' },
+  { value: 'senior', label: 'Senior' },
+  { value: 'kids', label: 'Kids' },
+  { value: 'military', label: 'Military' },
+  { value: 'snap', label: 'SNAP' },
+  { value: 'income_requirement', label: 'Income Requirement' },
   { value: 'other', label: 'Other' },
 ] as const;
 
-export const VALID_BENEFITS = new Set(BENEFIT_CATEGORIES.map((b) => b.value));
+export const VALID_ELIGIBILITY_TYPES = new Set(ELIGIBILITY_TYPES.map((e) => e.value));
+
+export const VENUE_TYPES = [
+  { value: 'food_pantry', label: 'Food Pantry' },
+  { value: 'food_bank', label: 'Food Bank' },
+  { value: 'restaurant', label: 'Restaurant' },
+  { value: 'cafe', label: 'Cafe' },
+  { value: 'grocery_store', label: 'Grocery Store' },
+  { value: 'farmers_market', label: 'Farmers Market' },
+  { value: 'community_organization', label: 'Community Organization' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const VALID_VENUE_TYPES = new Set(VENUE_TYPES.map((v) => v.value));
+export const DEFAULT_VENUE_TYPE = 'other';
 
 export const selectClass =
   'h-9 w-full rounded-3xl border border-transparent bg-input/50 px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 transition-[color,box-shadow,background-color]';
@@ -71,9 +90,11 @@ export const CSV_UPLOAD_LABEL = 'CSV upload';
 export const OFFER_DETAILS_LEGEND = 'Offer Details';
 export const NAME_LABEL = 'Name';
 export const DESCRIPTION_LABEL = 'Description';
+export const VENUE_TYPE_LABEL = 'Venue Type';
 export const OFFER_DESC_LABEL = 'Offer Description';
 export const OFFER_SOURCE_LABEL = 'Offer Source';
-export const BENEFITS_LABEL = 'Benefits';
+export const PRICE_TYPE_LABEL = 'Price Type';
+export const ELIGIBILITY_LABEL = 'Eligibility';
 export const EXPIRES_AT_LABEL = 'Expires At';
 export const ACTIVE_STATUS_LABEL = 'Active Status';
 export const VERIFICATION_STATUS_LABEL = 'Verification Status';
@@ -139,13 +160,13 @@ export const NO_LOCATIONS_MESSAGE = 'No locations associated with this offer.';
 
 // CSV section
 export const CSV_COLUMN_NAMES =
-  'name, description, offer_desc, offer_source, benefits, expires_at, is_active, notes, address, address2, city, state, zip_code, neighborhood, phone_number, location_notes';
+  'name, description, venue_type, offer_desc, offer_source, price_type, eligibility, expires_at, is_active, notes, address, address2, city, state, zip_code, neighborhood, phone_number, location_notes';
 export const CSV_MULTI_BENEFIT_HINT =
-  'Separate multiple benefit values with commas. If any location field is present, address, city, state, and zip_code are all required.';
+  'Separate multiple price_type/eligibility values with commas. If any location field is present, address, city, state, and zip_code are all required.';
 export const CSV_DOWNLOAD_LABEL = 'Download example CSV';
 export const CSV_FILE_LABEL = 'CSV File';
 export const CSV_TABLE_NAME = 'Name';
-export const CSV_TABLE_BENEFITS = 'Benefits';
+export const CSV_TABLE_BENEFITS = 'Price / Eligibility';
 export const CSV_TABLE_LOCATION = 'Location';
 
 // Approval panel

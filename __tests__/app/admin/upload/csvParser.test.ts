@@ -1,7 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { parseOffersCSV } from '@/app/admin/upload/csvParser'
 
-const HEADER = 'name,description,offer_desc,offer_source,benefits,expires_at,is_active,notes,address,address2,city,state,zip_code,neighborhood,phone_number,location_notes'
+const COLUMNS = [
+  'name', 'description', 'venue_type', 'offer_desc', 'offer_source', 'price_type', 'eligibility',
+  'expires_at', 'is_active', 'notes', 'address', 'address2', 'city', 'state', 'zip_code',
+  'neighborhood', 'phone_number', 'location_notes',
+] as const
+
+const HEADER = COLUMNS.join(',')
+
+function row(fields: Partial<Record<(typeof COLUMNS)[number], string>>): string {
+  return COLUMNS.map((c) => {
+    const v = fields[c] ?? ''
+    return v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v
+  }).join(',')
+}
 
 function csv(...rows: string[]) {
   return [HEADER, ...rows].join('\n')
@@ -16,46 +29,84 @@ describe('parseOffersCSV', () => {
   })
 
   it('parses a minimal valid row with no location', () => {
-    const result = parseOffersCSV(csv('Oregon Food Bank,,,,,,,,,,,,,,,,'))
+    const result = parseOffersCSV(csv(row({ name: 'Oregon Food Bank' })))
     expect(result.errors).toHaveLength(0)
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0].name).toBe('Oregon Food Bank')
     expect(result.rows[0].location).toBeUndefined()
   })
 
-  it('parses a row with valid benefit values', () => {
-    const result = parseOffersCSV(csv('Test,,,,"free_food,snap_accepted",,,,,,,,,,,,'))
-    expect(result.errors).toHaveLength(0)
-    expect(result.rows[0].benefits).toEqual(['free_food', 'snap_accepted'])
+  it('defaults venue_type to "other" when blank', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test' })))
+    expect(result.rows[0].venue_type).toBe('other')
   })
 
-  it('errors on invalid benefit values', () => {
-    const result = parseOffersCSV(csv('Test,,,,"free_food,invalid_benefit",,,,,,,,,,,,'))
+  it('parses a valid venue_type value', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', venue_type: 'food_pantry' })))
+    expect(result.errors).toHaveLength(0)
+    expect(result.rows[0].venue_type).toBe('food_pantry')
+  })
+
+  it('errors on an invalid venue_type value', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', venue_type: 'spaceship' })))
     expect(result.rows).toHaveLength(0)
-    expect(result.errors[0].message).toMatch(/invalid benefit values/)
-    expect(result.errors[0].message).toContain('invalid_benefit')
+    expect(result.errors[0].message).toMatch(/invalid venue_type/)
+  })
+
+  it('parses a row with valid price_type values', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', price_type: 'free,discount' })))
+    expect(result.errors).toHaveLength(0)
+    expect(result.rows[0].price_type).toEqual(['free', 'discount'])
+  })
+
+  it('errors on invalid price_type values', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', price_type: 'free,bogo' })))
+    expect(result.rows).toHaveLength(0)
+    expect(result.errors[0].message).toMatch(/invalid price_type values/)
+    expect(result.errors[0].message).toContain('bogo')
+  })
+
+  it('parses a row with valid eligibility values', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', eligibility: 'senior,military' })))
+    expect(result.errors).toHaveLength(0)
+    expect(result.rows[0].eligibility).toEqual(['senior', 'military'])
+  })
+
+  it('errors on invalid eligibility values', () => {
+    const result = parseOffersCSV(csv(row({ name: 'Test', eligibility: 'senior,invalid_value' })))
+    expect(result.rows).toHaveLength(0)
+    expect(result.errors[0].message).toMatch(/invalid eligibility values/)
+    expect(result.errors[0].message).toContain('invalid_value')
   })
 
   it('parses is_active true and false correctly', () => {
-    const trueResult = parseOffersCSV(csv('Test A,,,,,,true,,,,,,,,,,'))
-    const falseResult = parseOffersCSV(csv('Test B,,,,,,false,,,,,,,,,,'))
+    const trueResult = parseOffersCSV(csv(row({ name: 'Test A', is_active: 'true' })))
+    const falseResult = parseOffersCSV(csv(row({ name: 'Test B', is_active: 'false' })))
     expect(trueResult.rows[0].is_active).toBe(true)
     expect(falseResult.rows[0].is_active).toBe(false)
   })
 
   it('errors when is_active is not "true" or "false"', () => {
-    const result = parseOffersCSV(csv('Test,,,,,,yes,,,,,,,,,,'))
+    const result = parseOffersCSV(csv(row({ name: 'Test', is_active: 'yes' })))
     expect(result.errors[0].message).toMatch(/is_active must be/i)
   })
 
   it('leaves is_active undefined when the column is blank', () => {
-    const result = parseOffersCSV(csv('Test,,,,,,,,,,,,,,,,'))
+    const result = parseOffersCSV(csv(row({ name: 'Test' })))
     expect(result.rows[0].is_active).toBeUndefined()
   })
 
   it('parses a row with a full location', () => {
-    const row = 'Oregon Food Bank,,,,,,,,7900 NE 33rd Dr,,Portland,OR,97211,Parkrose,503-282-0555,Outdoor only'
-    const result = parseOffersCSV(csv(row))
+    const result = parseOffersCSV(csv(row({
+      name: 'Oregon Food Bank',
+      address: '7900 NE 33rd Dr',
+      city: 'Portland',
+      state: 'OR',
+      zip_code: '97211',
+      neighborhood: 'Parkrose',
+      phone_number: '503-282-0555',
+      location_notes: 'Outdoor only',
+    })))
     expect(result.errors).toHaveLength(0)
     const loc = result.rows[0].location
     expect(loc?.address).toBe('7900 NE 33rd Dr')
@@ -68,8 +119,7 @@ describe('parseOffersCSV', () => {
   })
 
   it('errors when location is partial — address present but city/state/zip missing', () => {
-    const row = 'Test,,,,,,,,123 Main St,,,,,,'
-    const result = parseOffersCSV(csv(row))
+    const result = parseOffersCSV(csv(row({ name: 'Test', address: '123 Main St' })))
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0].message).toMatch(/location requires/)
     expect(result.errors[0].message).toContain('city')
@@ -78,7 +128,7 @@ describe('parseOffersCSV', () => {
   })
 
   it('errors when name is missing', () => {
-    const result = parseOffersCSV(csv(',Some description,,,,,,,,,,,,,,'))
+    const result = parseOffersCSV(csv(row({ description: 'Some description' })))
     expect(result.rows).toHaveLength(0)
     expect(result.errors[0].row).toBe(2)
     expect(result.errors[0].message).toMatch(/name is required/)
@@ -86,8 +136,8 @@ describe('parseOffersCSV', () => {
 
   it('collects errors from multiple rows independently', () => {
     const result = parseOffersCSV(csv(
-      'Valid Row,,,,,,,,,,,,,,,,',
-      ',Missing name field,,,,,,,,,,,,,,,'  // non-empty row but no name
+      row({ name: 'Valid Row' }),
+      row({ description: 'Missing name field' }),
     ))
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0].name).toBe('Valid Row')
@@ -96,12 +146,12 @@ describe('parseOffersCSV', () => {
   })
 
   it('skips rows where all cells are empty', () => {
-    const result = parseOffersCSV(`${HEADER}\nValid Row,,,,,,,,,,,,,,,,,\n\n`)
+    const result = parseOffersCSV(`${HEADER}\n${row({ name: 'Valid Row' })}\n\n`)
     expect(result.rows).toHaveLength(1)
   })
 
   it('handles quoted fields containing commas', () => {
-    const result = parseOffersCSV(csv('"Food, Drink & More",,,,,,,,,,,,,,,,'))
+    const result = parseOffersCSV(csv(row({ name: 'Food, Drink & More' })))
     expect(result.errors).toHaveLength(0)
     expect(result.rows[0].name).toBe('Food, Drink & More')
   })

@@ -11,7 +11,8 @@ import {
   type LocationHour,
 } from './actions';
 import {
-  BENEFIT_CATEGORIES,
+  PRICE_TYPES,
+  ELIGIBILITY_TYPES,
   DAY_ORDER,
   DAY_LABELS,
   BACK_LABEL,
@@ -24,13 +25,15 @@ import {
   REJECT_LABEL,
   APPROVE_RESOURCE_LABEL,
   OFFER_FIELD_LABEL,
-  SOURCE_FIELD_LABEL,
   HOURS_SECTION_LABEL,
   SAVING_LABEL,
 } from './uploadConstants';
 
-const benefitLabel = (value: string) =>
-  BENEFIT_CATEGORIES.find((b) => b.value === value)?.label ?? value;
+const priceTypeLabel = (value: string) =>
+  PRICE_TYPES.find((p) => p.value === value)?.label ?? value;
+
+const eligibilityLabel = (value: string) =>
+  ELIGIBILITY_TYPES.find((e) => e.value === value)?.label ?? value;
 
 function formatTime(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -63,7 +66,7 @@ function LocationCard({
   loading,
 }: {
   loc: OfferLocation;
-  onAction: (id: string, status: 'approved' | 'rejected') => void;
+  onAction: (id: string, status: 'verified' | 'rejected') => void;
   loading: boolean;
 }) {
   const isPending = loc.verification_status === 'pending' || loc.verification_status == null;
@@ -94,7 +97,7 @@ function LocationCard({
         {isPending && (
           <div className="flex gap-2">
             <button
-              onClick={() => onAction(loc.id, 'approved')}
+              onClick={() => onAction(loc.id, 'verified')}
               disabled={loading}
               className="text-xs px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50"
             >
@@ -135,8 +138,8 @@ function ResourceCard({
   loadingIds,
 }: {
   item: PendingResource;
-  onResourceAction: (id: string, status: 'approved' | 'rejected') => void;
-  onLocationAction: (resourceId: string, locationId: string, status: 'approved' | 'rejected') => void;
+  onResourceAction: (businessId: string, offerId: string, status: 'verified' | 'rejected') => void;
+  onLocationAction: (resourceId: string, locationId: string, status: 'verified' | 'rejected') => void;
   loadingIds: Set<string>;
 }) {
   const resourceLoading = loadingIds.has(item.id);
@@ -155,7 +158,7 @@ function ResourceCard({
         <StatusBadge status={item.verification_status} />
       </div>
 
-      {(item.description || item.offer_desc || item.offer_source) && (
+      {(item.description || item.offer_desc) && (
         <div className="flex flex-col gap-1 text-sm">
           {item.description && <p className="text-foreground">{item.description}</p>}
           {item.offer_desc && (
@@ -164,23 +167,25 @@ function ResourceCard({
               {item.offer_desc}
             </p>
           )}
-          {item.offer_source && (
-            <p className="text-muted-foreground">
-              <span className="font-medium text-foreground">{SOURCE_FIELD_LABEL}</span>
-              {item.offer_source}
-            </p>
-          )}
         </div>
       )}
 
-      {item.benefits && item.benefits.length > 0 && (
+      {((item.price_type && item.price_type.length > 0) || (item.eligibility && item.eligibility.length > 0)) && (
         <div className="flex flex-wrap gap-1.5">
-          {item.benefits.map((b) => (
+          {item.price_type.map((p) => (
             <span
-              key={b}
+              key={p}
               className="text-xs px-2 py-0.5 rounded-full border border-border bg-muted/40 text-muted-foreground"
             >
-              {benefitLabel(b)}
+              {priceTypeLabel(p)}
+            </span>
+          ))}
+          {item.eligibility.map((e) => (
+            <span
+              key={e}
+              className="text-xs px-2 py-0.5 rounded-full border border-border bg-muted/40 text-muted-foreground"
+            >
+              {eligibilityLabel(e)}
             </span>
           ))}
         </div>
@@ -212,7 +217,7 @@ function ResourceCard({
       <div className="flex gap-2 pt-1 border-t border-border">
         <Button
           size="sm"
-          onClick={() => onResourceAction(item.id, 'approved')}
+          onClick={() => onResourceAction(item.id, item.offer_id, 'verified')}
           disabled={resourceLoading}
         >
           {resourceLoading ? SAVING_LABEL : APPROVE_RESOURCE_LABEL}
@@ -220,7 +225,7 @@ function ResourceCard({
         <Button
           size="sm"
           variant="destructive"
-          onClick={() => onResourceAction(item.id, 'rejected')}
+          onClick={() => onResourceAction(item.id, item.offer_id, 'rejected')}
           disabled={resourceLoading}
         >
           {REJECT_LABEL}
@@ -249,21 +254,21 @@ export function ApprovalPanel({ onBack }: { onBack: () => void }) {
   const removeLoading = (id: string) =>
     setLoadingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
 
-  const handleResourceAction = async (id: string, status: 'approved' | 'rejected') => {
-    addLoading(id);
-    const res = await setResourceVerificationStatus(id, status);
-    removeLoading(id);
+  const handleResourceAction = async (businessId: string, offerId: string, status: 'verified' | 'rejected') => {
+    addLoading(businessId);
+    const res = await setResourceVerificationStatus(businessId, offerId, status);
+    removeLoading(businessId);
     if (res.error) {
       setError(res.error);
     } else {
-      setItems((prev) => prev?.filter((item) => item.id !== id) ?? null);
+      setItems((prev) => prev?.filter((item) => item.id !== businessId) ?? null);
     }
   };
 
   const handleLocationAction = async (
     resourceId: string,
     locationId: string,
-    status: 'approved' | 'rejected'
+    status: 'verified' | 'rejected'
   ) => {
     addLoading(locationId);
     const res = await setLocationVerificationStatus(locationId, status);

@@ -139,16 +139,17 @@ describe('getOffers', () => {
     expect(result).toEqual([])
   })
 
-  it('returns offers when authenticated as admin', async () => {
+  it('returns businesses when authenticated as admin', async () => {
     mockAdminSession()
-    const offerRows = [{ id: '1', name: 'Food Bank' }]
+    const businessRows = [{ id: '1', name: 'Food Bank' }]
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({ data: offerRows, error: null }),
+        order: vi.fn().mockResolvedValue({ data: businessRows, error: null }),
       }),
     })
     const result = await getOffers()
-    expect(result).toEqual(offerRows)
+    expect(result).toEqual(businessRows)
+    expect(mockFrom).toHaveBeenCalledWith('businesses')
   })
 
   it('returns an empty array when the db query fails', async () => {
@@ -168,62 +169,116 @@ describe('getOffers', () => {
 describe('getOfferWithLocations', () => {
   it('returns null when not authenticated', async () => {
     mockCookiesGet.mockReturnValue(undefined)
-    const result = await getOfferWithLocations('offer-1')
+    const result = await getOfferWithLocations('business-1')
     expect(result).toBeNull()
   })
 
-  it('returns null when the offer is not found', async () => {
+  it('returns null when the business is not found', async () => {
     mockAdminSession()
-    mockFrom
-      .mockReturnValueOnce({
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
+            }),
+          }),
+        }
+      }
+      return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
         }),
-      })
-      .mockReturnValueOnce({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-      })
+      }
+    })
     const result = await getOfferWithLocations('bad-id')
     expect(result).toBeNull()
   })
 
-  it('returns the offer with its locations when found', async () => {
+  it('returns null when the business has no offer yet', async () => {
     mockAdminSession()
-    const offerData = {
-      id: 'offer-1',
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: 'business-1', name: 'Food Bank', description: null, venue_type: 'food_bank', verification_status: 'pending', notes: null },
+                error: null,
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === 'offers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [], error: null }) }) }
+    })
+    const result = await getOfferWithLocations('business-1')
+    expect(result).toBeNull()
+  })
+
+  it('returns the business with its primary offer and locations when found', async () => {
+    mockAdminSession()
+    const businessData = {
+      id: 'business-1',
       name: 'Food Bank',
       description: 'A food bank',
-      offer_desc: null,
-      offer_source: null,
-      benefits: null,
+      venue_type: 'food_bank',
       verification_status: 'pending',
-      expires_at: null,
-      is_active: true,
       notes: null,
     }
+    const offerData = [{
+      id: 'offer-1',
+      business_id: 'business-1',
+      description: null,
+      price_type: ['free'],
+      eligibility: ['anyone'],
+      expires_at: null,
+      is_active: true,
+    }]
     const locationData = [{ id: 'loc-1', address: '123 Main St', hours: [] }]
 
-    mockFrom
-      .mockReturnValueOnce({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: offerData, error: null }),
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: businessData, error: null }),
+            }),
           }),
-        }),
-      })
-      .mockReturnValueOnce({
+        }
+      }
+      if (table === 'offers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: offerData, error: null }),
+            }),
+          }),
+        }
+      }
+      return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({ data: locationData, error: null }),
         }),
-      })
+      }
+    })
 
-    const result = await getOfferWithLocations('offer-1')
+    const result = await getOfferWithLocations('business-1')
     expect(result).not.toBeNull()
     expect(result!.name).toBe('Food Bank')
+    expect(result!.offer_id).toBe('offer-1')
+    expect(result!.price_type).toEqual(['free'])
     expect(result!.locations).toEqual(locationData)
   })
 })
@@ -233,30 +288,47 @@ describe('getOfferWithLocations', () => {
 describe('updateOffer', () => {
   it('returns an error when not authenticated', async () => {
     mockCookiesGet.mockReturnValue(undefined)
-    const result = await updateOffer('offer-1', { name: 'New Name' })
+    const result = await updateOffer('business-1', 'offer-1', { name: 'New Name' })
     expect(result.error).toMatch(/unauthorized/i)
   })
 
-  it('returns success when the update succeeds', async () => {
+  it('returns success when both the business and offer updates succeed', async () => {
     mockAdminSession()
     mockFrom.mockReturnValue({
       update: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null }),
       }),
     })
-    const result = await updateOffer('offer-1', { name: 'New Name' })
+    const result = await updateOffer('business-1', 'offer-1', { name: 'New Name' })
     expect(result.success).toBe(true)
+    expect(mockFrom).toHaveBeenCalledWith('businesses')
+    expect(mockFrom).toHaveBeenCalledWith('offers')
   })
 
-  it('returns an error when the db update fails', async () => {
+  it('returns an error when the business update fails', async () => {
     mockAdminSession()
-    mockFrom.mockReturnValue({
+    mockFrom.mockImplementation((table: string) => ({
       update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: { message: 'update failed' } }),
+        eq: vi.fn().mockResolvedValue(
+          table === 'businesses' ? { error: { message: 'business update failed' } } : { error: null }
+        ),
       }),
-    })
-    const result = await updateOffer('offer-1', { name: 'New Name' })
-    expect(result.error).toBe('update failed')
+    }))
+    const result = await updateOffer('business-1', 'offer-1', { name: 'New Name' })
+    expect(result.error).toBe('business update failed')
+  })
+
+  it('returns an error when the offer update fails', async () => {
+    mockAdminSession()
+    mockFrom.mockImplementation((table: string) => ({
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue(
+          table === 'offers' ? { error: { message: 'offer update failed' } } : { error: null }
+        ),
+      }),
+    }))
+    const result = await updateOffer('business-1', 'offer-1', { name: 'New Name' })
+    expect(result.error).toBe('offer update failed')
   })
 })
 
@@ -285,14 +357,22 @@ describe('uploadOffers', () => {
 
   it('returns success with count when all rows are created', async () => {
     mockAdminSession()
-    const mockResourceInsert = vi.fn().mockReturnValue({
+    const mockBusinessInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }),
+        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
+      }),
+    })
+    const mockOfferInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
       }),
     })
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'resources') {
-        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      if (table === 'businesses') {
+        return { ...makeExistsCheck(), insert: mockBusinessInsert }
+      }
+      if (table === 'offers') {
+        return { ...makeExistsCheck(), insert: mockOfferInsert }
       }
       throw new Error(`unexpected table ${table}`)
     })
@@ -305,16 +385,16 @@ describe('uploadOffers', () => {
     expect(result.created).toBe(2)
   })
 
-  it('returns an error when a resource insert fails', async () => {
+  it('returns an error when a business insert fails', async () => {
     mockAdminSession()
-    const mockResourceInsert = vi.fn().mockReturnValue({
+    const mockBusinessInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: null, error: { message: 'insert failed' } }),
       }),
     })
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'resources') {
-        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      if (table === 'businesses') {
+        return { ...makeExistsCheck(), insert: mockBusinessInsert }
       }
       throw new Error(`unexpected table ${table}`)
     })
@@ -324,7 +404,34 @@ describe('uploadOffers', () => {
     expect(result.created).toBe(0)
   })
 
-  it('inserts a location when the row includes location data', async () => {
+  it('returns an error when an offer insert fails', async () => {
+    mockAdminSession()
+    const mockBusinessInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
+      }),
+    })
+    const mockOfferInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'offer insert failed' } }),
+      }),
+    })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return { ...makeExistsCheck(), insert: mockBusinessInsert }
+      }
+      if (table === 'offers') {
+        return { ...makeExistsCheck(), insert: mockOfferInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    const result = await uploadOffers([{ name: 'Food Bank' }], 'admin-1')
+    expect(result.error).toMatch(/failed to create its offer/i)
+    expect(result.created).toBe(0)
+  })
+
+  it('inserts a location and links it to the offer when the row includes location data', async () => {
     mockAdminSession()
     process.env.GEOCODIO_API_KEY = 'test-geocodio-key'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -334,9 +441,14 @@ describe('uploadOffers', () => {
       }),
     }))
 
-    const mockResourceInsert = vi.fn().mockReturnValue({
+    const mockBusinessInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'new-1' }, error: null }),
+        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
+      }),
+    })
+    const mockOfferInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
       }),
     })
     const mockLocationInsert = vi.fn().mockReturnValue({
@@ -344,13 +456,20 @@ describe('uploadOffers', () => {
         single: vi.fn().mockResolvedValue({ data: { id: 'loc-1' }, error: null }),
       }),
     })
+    const mockLinkInsert = vi.fn().mockResolvedValue({ error: null })
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'resources') {
-        return { ...makeExistsCheck(), insert: mockResourceInsert }
+      if (table === 'businesses') {
+        return { ...makeExistsCheck(), insert: mockBusinessInsert }
       }
-      if (table === 'physical_locations') {
+      if (table === 'offers') {
+        return { ...makeExistsCheck(), insert: mockOfferInsert }
+      }
+      if (table === 'locations') {
         return { ...makeExistsCheck(), insert: mockLocationInsert }
+      }
+      if (table === 'offer_locations') {
+        return { insert: mockLinkInsert }
       }
       throw new Error(`unexpected table ${table}`)
     })
@@ -365,10 +484,40 @@ describe('uploadOffers', () => {
     expect(result.success).toBe(true)
     expect(result.created).toBe(1)
     expect(mockLocationInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ resource_id: 'new-1', address: '123 Main St' }),
+      expect.objectContaining({ business_id: 'biz-1', address: '123 Main St' }),
     )
+    expect(mockLinkInsert).toHaveBeenCalledWith({ offer_id: 'offer-1', location_id: 'loc-1' })
 
     vi.unstubAllGlobals()
     delete process.env.GEOCODIO_API_KEY
+  })
+
+  it('folds offer_source into the offer notes as "Source: <url>"', async () => {
+    mockAdminSession()
+    const mockBusinessInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
+      }),
+    })
+    const mockOfferInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
+      }),
+    })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return { ...makeExistsCheck(), insert: mockBusinessInsert }
+      }
+      if (table === 'offers') {
+        return { ...makeExistsCheck(), insert: mockOfferInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await uploadOffers([{ name: 'Food Bank', offer_source: 'https://example.com' }], 'admin-1')
+
+    expect(mockOfferInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'Source: https://example.com' }),
+    )
   })
 })

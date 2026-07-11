@@ -18,7 +18,7 @@ import {
 
 function downloadExampleCSV() {
   const headers = [
-    'name', 'description', 'offer_desc', 'offer_source', 'benefits',
+    'name', 'description', 'venue_type', 'offer_desc', 'offer_source', 'price_type', 'eligibility',
     'expires_at', 'is_active', 'notes', 'address', 'address2', 'city', 'state',
     'zip_code', 'neighborhood', 'phone_number', 'location_notes',
   ];
@@ -27,9 +27,11 @@ function downloadExampleCSV() {
     [
       'Oregon Food Bank',
       'Statewide network distributing food to those in need',
+      'food_bank',
       'Free groceries available on designated distribution days',
       'https://www.oregonfoodbank.org',
-      'free_food,snap_accepted',
+      'free,discount',
+      'anyone,snap',
       '',
       'true',
       '',
@@ -38,9 +40,11 @@ function downloadExampleCSV() {
     [
       'SE Uplift Community Fridge',
       'Community fridge stocked with donated food',
+      'community_organization',
       'Take what you need, leave what you can',
       '',
-      'free_food',
+      'free',
+      'anyone',
       '2026-12-31',
       'true',
       'Outdoor fridge; check social media for restocking schedule',
@@ -49,9 +53,11 @@ function downloadExampleCSV() {
     [
       'Eastside Diner Kids Night',
       'Family diner in NE Portland',
+      'restaurant',
       'Kids 12 and under eat free with a paying adult on Tuesdays',
       '',
-      'kids_eat_free,discounted_food',
+      'free,discount',
+      'kids,anyone',
       '2026-08-31',
       'true',
       '',
@@ -60,9 +66,11 @@ function downloadExampleCSV() {
     [
       'Oregon SNAP Benefits',
       'State food assistance program for low-income households',
+      'other',
       'Apply online for monthly food assistance benefits',
       'https://www.oregon.gov/dhs/ASSISTANCE/FOOD-MED/Pages/SNAP.aspx',
-      'snap_accepted,free_food',
+      'free,discount',
+      'snap,anyone',
       '',
       'true',
       'Income limits apply; see website for eligibility details',
@@ -71,9 +79,11 @@ function downloadExampleCSV() {
     [
       'Meals on Wheels People',
       'Home-delivered meals for seniors and adults with disabilities in the Portland metro area',
+      'community_organization',
       'Free or reduced-cost meals delivered to your home; call to apply',
       'https://www.mowp.org',
-      'free_food,senior_discount',
+      'free,discount',
+      'anyone,senior',
       '',
       'true',
       '',
@@ -199,7 +209,7 @@ export function CSVSection({ adminUserId }: { adminUserId: string }) {
                   <tr key={i} className="border-b border-border last:border-0">
                     <td className="px-3 py-2">{row.name}</td>
                     <td className="px-3 py-2 text-muted-foreground">
-                      {row.benefits?.join(', ') || '—'}
+                      {[...(row.price_type ?? []), ...(row.eligibility ?? [])].join(', ') || '—'}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {row.location ? `${row.location.address}, ${row.location.city}` : '—'}
