@@ -33,7 +33,9 @@ import {
   getOffers,
   getOfferWithLocations,
   updateOffer,
-  uploadOffers,
+  searchBusinesses,
+  getBusinessDetail,
+  submitOfferEntry,
 } from '@/app/admin/upload/actions'
 
 const ADMIN_USER = {
@@ -332,15 +334,86 @@ describe('updateOffer', () => {
   })
 })
 
-// ─── uploadOffers ─────────────────────────────────────────────────────────────
+// ─── searchBusinesses ─────────────────────────────────────────────────────────
 
-describe('uploadOffers', () => {
-  it('returns an error when not authenticated', async () => {
+describe('searchBusinesses', () => {
+  it('returns an empty array when not authenticated', async () => {
     mockCookiesGet.mockReturnValue(undefined)
-    const result = await uploadOffers([{ name: 'Food Bank' }], 'admin-1')
-    expect(result.error).toMatch(/unauthorized/i)
-    expect(result.created).toBe(0)
+    const result = await searchBusinesses('food')
+    expect(result).toEqual([])
   })
+
+  it('returns an empty array for a blank query without hitting the db', async () => {
+    mockAdminSession()
+    const result = await searchBusinesses('   ')
+    expect(result).toEqual([])
+    expect(mockFrom).not.toHaveBeenCalled()
+  })
+
+  it('returns matching businesses', async () => {
+    mockAdminSession()
+    const rows = [{ id: 'biz-1', name: 'Oregon Food Bank' }]
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        ilike: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: rows, error: null }),
+          }),
+        }),
+      }),
+    })
+    const result = await searchBusinesses('oregon')
+    expect(result).toEqual(rows)
+  })
+})
+
+// ─── getBusinessDetail ────────────────────────────────────────────────────────
+
+describe('getBusinessDetail', () => {
+  it('returns null when not authenticated', async () => {
+    mockCookiesGet.mockReturnValue(undefined)
+    const result = await getBusinessDetail('biz-1')
+    expect(result).toBeNull()
+  })
+
+  it('returns the business locations and offers', async () => {
+    mockAdminSession()
+    const locations = [
+      { id: 'loc-1', address: '123 Main St', address2: null, city: 'Portland', state: 'OR', zip_code: '97201' },
+    ]
+    const offers = [{ id: 'offer-1', name: 'Free Lunch' }]
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'locations') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: locations, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'offers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: offers, error: null }),
+            }),
+          }),
+        }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+    const result = await getBusinessDetail('biz-1')
+    expect(result).toEqual({ locations, offers })
+  })
+})
+
+// ─── submitOfferEntry ─────────────────────────────────────────────────────────
+
+describe('submitOfferEntry', () => {
+  const NEW_BUSINESS = { mode: 'new' as const, name: 'Food Bank', venue_type: 'food_bank' }
+  const NEW_OFFER = { mode: 'new' as const, name: 'Free Groceries', price_type: ['free'], eligibility: ['anyone'] }
+  const NONE_LOCATION = { mode: 'none' as const }
 
   // Builds a chainable mock for the "does this already exist" lookups
   // (select().ilike()...maybeSingle()), defaulting to "not found".
@@ -355,85 +428,100 @@ describe('uploadOffers', () => {
     return chain
   }
 
-  it('returns success with count when all rows are created', async () => {
+  it('returns an error when not authenticated', async () => {
+    mockCookiesGet.mockReturnValue(undefined)
+    const result = await submitOfferEntry(
+      { business: NEW_BUSINESS, location: NONE_LOCATION, offer: NEW_OFFER },
+      'admin-1',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/unauthorized/i)
+  })
+
+  it('rejects an existing offer with no location', async () => {
     mockAdminSession()
-    const mockBusinessInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
-      }),
+    const result = await submitOfferEntry(
+      {
+        business: { mode: 'existing', id: 'biz-1' },
+        location: NONE_LOCATION,
+        offer: { mode: 'existing', id: 'offer-1' },
+      },
+      'admin-1',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/can only be attached to a location/i)
+  })
+
+  it('rejects an existing location for a business that has not been created yet', async () => {
+    mockAdminSession()
+    const result = await submitOfferEntry(
+      { business: NEW_BUSINESS, location: { mode: 'existing', id: 'loc-1' }, offer: NEW_OFFER },
+      'admin-1',
+    )
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a name conflict when creating a new business', async () => {
+    mockAdminSession()
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return makeExistsCheck({ data: { id: 'existing-biz', name: 'Food Bank' }, error: null })
+      }
+      throw new Error(`unexpected table ${table}`)
     })
+    const result = await submitOfferEntry(
+      { business: NEW_BUSINESS, location: NONE_LOCATION, offer: NEW_OFFER },
+      'admin-1',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/already exists/i)
+  })
+
+  it('reuses an existing business and creates a new offer with no location', async () => {
+    mockAdminSession()
     const mockOfferInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
       }),
     })
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'businesses') {
-        return { ...makeExistsCheck(), insert: mockBusinessInsert }
-      }
-      if (table === 'offers') {
-        return { ...makeExistsCheck(), insert: mockOfferInsert }
-      }
+      if (table === 'offers') return { insert: mockOfferInsert }
       throw new Error(`unexpected table ${table}`)
     })
-
-    const result = await uploadOffers(
-      [{ name: 'Food Bank' }, { name: 'Community Fridge' }],
+    const result = await submitOfferEntry(
+      { business: { mode: 'existing', id: 'biz-1' }, location: NONE_LOCATION, offer: NEW_OFFER },
       'admin-1',
     )
-    expect(result.success).toBe(true)
-    expect(result.created).toBe(2)
+    expect(result).toEqual({ success: true, businessId: 'biz-1', locationId: null, offerId: 'offer-1' })
+    expect(mockOfferInsert).toHaveBeenCalledWith(expect.objectContaining({ business_id: 'biz-1' }))
   })
 
-  it('returns an error when a business insert fails', async () => {
+  it('rejects a conflicting address when creating a new location, naming the existing business', async () => {
     mockAdminSession()
-    const mockBusinessInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'insert failed' } }),
-      }),
-    })
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'businesses') {
-        return { ...makeExistsCheck(), insert: mockBusinessInsert }
+      if (table === 'locations') {
+        return makeExistsCheck({
+          data: { id: 'loc-1', business_id: 'other-biz', businesses: { name: 'Other Business' } },
+          error: null,
+        })
       }
       throw new Error(`unexpected table ${table}`)
     })
-
-    const result = await uploadOffers([{ name: 'Food Bank' }], 'admin-1')
-    expect(result.error).toMatch(/failed to create offer/i)
-    expect(result.created).toBe(0)
+    const result = await submitOfferEntry(
+      {
+        business: { mode: 'existing', id: 'biz-1' },
+        location: { mode: 'new', address: '123 Main St', city: 'Portland', state: 'OR', zip_code: '97201' },
+        offer: NEW_OFFER,
+      },
+      'admin-1',
+    )
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/Other Business/)
   })
 
-  it('returns an error when an offer insert fails', async () => {
+  it('creates a new location with geocoded coordinates and links it to the offer', async () => {
     mockAdminSession()
-    const mockBusinessInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
-      }),
-    })
-    const mockOfferInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'offer insert failed' } }),
-      }),
-    })
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'businesses') {
-        return { ...makeExistsCheck(), insert: mockBusinessInsert }
-      }
-      if (table === 'offers') {
-        return { ...makeExistsCheck(), insert: mockOfferInsert }
-      }
-      throw new Error(`unexpected table ${table}`)
-    })
-
-    const result = await uploadOffers([{ name: 'Food Bank' }], 'admin-1')
-    expect(result.error).toMatch(/failed to create its offer/i)
-    expect(result.created).toBe(0)
-  })
-
-  it('inserts a location and links it to the offer when the row includes location data', async () => {
-    mockAdminSession()
-    process.env.GEOCODIO_API_KEY = 'test-geocodio-key'
+    process.env.GEOCODIO_API_KEY = 'test-key'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -441,50 +529,33 @@ describe('uploadOffers', () => {
       }),
     }))
 
-    const mockBusinessInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
-      }),
-    })
     const mockOfferInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
-      }),
+      select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }) }),
     })
     const mockLocationInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'loc-1' }, error: null }),
-      }),
+      select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'loc-1' }, error: null }) }),
     })
     const mockLinkInsert = vi.fn().mockResolvedValue({ error: null })
 
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'businesses') {
-        return { ...makeExistsCheck(), insert: mockBusinessInsert }
-      }
-      if (table === 'offers') {
-        return { ...makeExistsCheck(), insert: mockOfferInsert }
-      }
-      if (table === 'locations') {
-        return { ...makeExistsCheck(), insert: mockLocationInsert }
-      }
-      if (table === 'offer_locations') {
-        return { insert: mockLinkInsert }
-      }
+      if (table === 'locations') return { ...makeExistsCheck(), insert: mockLocationInsert }
+      if (table === 'offers') return { insert: mockOfferInsert }
+      if (table === 'offer_locations') return { insert: mockLinkInsert }
       throw new Error(`unexpected table ${table}`)
     })
 
-    const result = await uploadOffers(
-      [{
-        name: 'Food Bank',
-        location: { address: '123 Main St', city: 'Portland', state: 'OR', zip_code: '97201' },
-      }],
+    const result = await submitOfferEntry(
+      {
+        business: { mode: 'existing', id: 'biz-1' },
+        location: { mode: 'new', address: '123 Main St', city: 'Portland', state: 'OR', zip_code: '97201' },
+        offer: NEW_OFFER,
+      },
       'admin-1',
     )
-    expect(result.success).toBe(true)
-    expect(result.created).toBe(1)
+
+    expect(result).toEqual({ success: true, businessId: 'biz-1', locationId: 'loc-1', offerId: 'offer-1' })
     expect(mockLocationInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ business_id: 'biz-1', address: '123 Main St' }),
+      expect.objectContaining({ business_id: 'biz-1', latitude: 45.5, longitude: -122.6 }),
     )
     expect(mockLinkInsert).toHaveBeenCalledWith({ offer_id: 'offer-1', location_id: 'loc-1' })
 
@@ -492,32 +563,42 @@ describe('uploadOffers', () => {
     delete process.env.GEOCODIO_API_KEY
   })
 
-  it('folds offer_source into the offer notes as "Source: <url>"', async () => {
+  it('reports a friendly message when the offer is already attached to the location', async () => {
     mockAdminSession()
-    const mockBusinessInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'biz-1' }, error: null }),
-      }),
-    })
-    const mockOfferInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }),
-      }),
-    })
+    const mockLinkInsert = vi.fn().mockResolvedValue({ error: { message: 'duplicate key', code: '23505' } })
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'businesses') {
-        return { ...makeExistsCheck(), insert: mockBusinessInsert }
-      }
-      if (table === 'offers') {
-        return { ...makeExistsCheck(), insert: mockOfferInsert }
-      }
+      if (table === 'offer_locations') return { insert: mockLinkInsert }
       throw new Error(`unexpected table ${table}`)
     })
-
-    await uploadOffers([{ name: 'Food Bank', offer_source: 'https://example.com' }], 'admin-1')
-
-    expect(mockOfferInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ notes: 'Source: https://example.com' }),
+    const result = await submitOfferEntry(
+      {
+        business: { mode: 'existing', id: 'biz-1' },
+        location: { mode: 'existing', id: 'loc-1' },
+        offer: { mode: 'existing', id: 'offer-1' },
+      },
+      'admin-1',
     )
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/already attached/i)
+  })
+
+  it('folds offer_source into the new offer notes', async () => {
+    mockAdminSession()
+    const mockOfferInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }) }),
+    })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'offers') return { insert: mockOfferInsert }
+      throw new Error(`unexpected table ${table}`)
+    })
+    await submitOfferEntry(
+      {
+        business: { mode: 'existing', id: 'biz-1' },
+        location: NONE_LOCATION,
+        offer: { ...NEW_OFFER, offer_source: 'https://example.com' },
+      },
+      'admin-1',
+    )
+    expect(mockOfferInsert).toHaveBeenCalledWith(expect.objectContaining({ notes: 'Source: https://example.com' }))
   })
 })

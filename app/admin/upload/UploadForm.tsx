@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SingleEntrySection } from './SingleEntrySection';
-import { CSVSection } from './CSVSection';
+import { OfferEntryForm } from './OfferEntryForm';
 import { ModifyOfferPanel } from './ModifyOfferPanel';
 import { ApprovalPanel } from './ApprovalPanel';
 import {
@@ -16,12 +15,9 @@ import {
   APPROVE_DESC,
   UPLOAD_PANEL_TITLE,
   UPLOAD_PANEL_SUBTITLE,
-  SINGLE_ENTRY_LABEL,
-  CSV_UPLOAD_LABEL,
 } from './uploadConstants';
 
 type Mode = 'select' | 'upload' | 'modify' | 'approve';
-type UploadSubMode = 'single' | 'csv';
 
 export function UploadForm({ adminUserId }: { adminUserId: string }) {
   const [mode, setMode] = useState<Mode>('select');
@@ -69,8 +65,6 @@ export function UploadForm({ adminUserId }: { adminUserId: string }) {
 }
 
 function UploadPanel({ adminUserId, onBack }: { adminUserId: string; onBack: () => void }) {
-  const [subMode, setSubMode] = useState<UploadSubMode>('single');
-
   return (
     <div className="flex flex-col gap-6">
       <button
@@ -85,34 +79,7 @@ function UploadPanel({ adminUserId, onBack }: { adminUserId: string; onBack: () 
         <p className="mt-1 text-sm text-muted-foreground">{UPLOAD_PANEL_SUBTITLE}</p>
       </div>
 
-      <div className="flex gap-2 rounded-xl border border-border bg-muted/40 p-1 w-fit">
-        <button
-          onClick={() => setSubMode('single')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            subMode === 'single'
-              ? 'bg-background shadow text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {SINGLE_ENTRY_LABEL}
-        </button>
-        <button
-          onClick={() => setSubMode('csv')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            subMode === 'csv'
-              ? 'bg-background shadow text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {CSV_UPLOAD_LABEL}
-        </button>
-      </div>
-
-      {subMode === 'single' ? (
-        <SingleEntrySection adminUserId={adminUserId} />
-      ) : (
-        <CSVSection adminUserId={adminUserId} />
-      )}
+      <OfferEntryForm adminUserId={adminUserId} />
     </div>
   );
 }

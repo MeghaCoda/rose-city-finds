@@ -12,6 +12,8 @@ import { ResultListItem } from '@/components/ui/ResultListItem'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { StandardButton } from '@/components/ui/StandardButton'
+import { Combobox } from '@/components/ui/combobox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useSearchFilters } from '@/stores/searchFilters.store'
 import { toParams } from '@/stores/searchFilters.url'
 
@@ -155,6 +157,34 @@ export default function DesignSystemPage() {
   const chipDemo = useToggleSet(['Free'])
   const [tab, setTab] = useState('list')
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
+
+  // Combobox demo
+  const COMBOBOX_DEMO_ITEMS = [
+    { id: '1', name: 'NE Portland Food Pantry' },
+    { id: '2', name: 'SE Community Kitchen' },
+    { id: '3', name: 'Eastside Senior Meals' },
+  ]
+  const CREATE_NEW_DEMO_ID = '__create_new__'
+  type ComboboxDemoItem = { id: string; name: string }
+  const [comboboxInputValue, setComboboxInputValue] = useState('')
+  const [comboboxValue, setComboboxValue] = useState<ComboboxDemoItem | null>(null)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+  const trimmedComboboxInput = comboboxInputValue.trim()
+  const comboboxResults = trimmedComboboxInput
+    ? COMBOBOX_DEMO_ITEMS.filter((item) =>
+        item.name.toLowerCase().includes(trimmedComboboxInput.toLowerCase())
+      )
+    : COMBOBOX_DEMO_ITEMS
+  const comboboxHasExactMatch = comboboxResults.some(
+    (item) => item.name.toLowerCase() === trimmedComboboxInput.toLowerCase()
+  )
+  const comboboxItems: ComboboxDemoItem[] =
+    trimmedComboboxInput && !comboboxHasExactMatch
+      ? [...comboboxResults, { id: CREATE_NEW_DEMO_ID, name: trimmedComboboxInput }]
+      : comboboxResults
+
+  // RadioGroup demo
+  const [radioDemoValue, setRadioDemoValue] = useState('existing-a')
 
   // FilterDrawer demo
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -549,6 +579,78 @@ export default function DesignSystemPage() {
           <Item>
             <Label>Footer</Label>
             <Token>border-t border-border, space-between</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── Combobox ──────────────────────────────────────────────── */}
+      <Section
+        title="Combobox"
+        note="Base UI combobox wrapper for server-driven search — type to filter, select an existing item, or fall through to a 'create new' item. Used by the admin uploader's business search."
+      >
+        <AppBg>
+          <Combobox.Root
+            items={comboboxItems}
+            filter={null}
+            inputValue={comboboxInputValue}
+            onInputValueChange={setComboboxInputValue}
+            value={comboboxValue}
+            onValueChange={(item: ComboboxDemoItem | null) => setComboboxValue(item)}
+            open={comboboxOpen}
+            onOpenChange={setComboboxOpen}
+            itemToStringLabel={(item: ComboboxDemoItem) => item.name}
+            isItemEqualToValue={(a: ComboboxDemoItem, b: ComboboxDemoItem) => a.id === b.id}
+          >
+            <Combobox.Input placeholder="Search businesses by name…" />
+            <Combobox.Portal>
+              <Combobox.Positioner>
+                <Combobox.Popup>
+                  <Combobox.Empty>No matches.</Combobox.Empty>
+                  <Combobox.List>
+                    {(item: ComboboxDemoItem) => (
+                      <Combobox.Item key={item.id} value={item}>
+                        {item.id === CREATE_NEW_DEMO_ID ? `+ Create new business "${item.name}"` : item.name}
+                      </Combobox.Item>
+                    )}
+                  </Combobox.List>
+                </Combobox.Popup>
+              </Combobox.Positioner>
+            </Combobox.Portal>
+          </Combobox.Root>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Popup</Label>
+            <Token>bg-surface-1 border-border shadow-lg</Token>
+          </Item>
+          <Item>
+            <Label>Highlighted item</Label>
+            <Token>bg-accent/10</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── RadioGroup ────────────────────────────────────────────── */}
+      <Section
+        title="RadioGroup"
+        note="Base UI radio group wrapper — used by the admin uploader to let an admin pick an existing location/offer or add a new one."
+      >
+        <AppBg>
+          <RadioGroup value={radioDemoValue} onValueChange={setRadioDemoValue}>
+            <RadioGroupItem value="existing-a" label="742 NE Alberta St" />
+            <RadioGroupItem value="existing-b" label="1847 SE Division St" />
+            <RadioGroupItem value="new" label="+ Add a new location" />
+            <RadioGroupItem value="none" label="No location for this offer" />
+          </RadioGroup>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Selected</Label>
+            <Token>border-primary bg-primary-subtle</Token>
+          </Item>
+          <Item>
+            <Label>Indicator</Label>
+            <Token>bg-primary dot inside Radio.Root</Token>
           </Item>
         </Row>
       </Section>
