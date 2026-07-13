@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { IconList, IconMap2 } from '@tabler/icons-react'
@@ -63,6 +63,7 @@ export function ResultsPage() {
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const { price, foodType, accessType, eligibility, toggle, toggleEligibility, reset } = useSearchFilters()
 
   function syncUrl() {
@@ -79,6 +80,11 @@ export function ResultsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  useEffect(() => {
+    if (!selectedId) return
+    itemRefs.current.get(selectedId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [selectedId])
 
   const { data: locations = [] } = useQuery<LocationWithOffers[]>({
     queryKey: ['locations'],
@@ -151,13 +157,15 @@ export function ResultsPage() {
           {visibleLocations.map((item) => (
             <ResultListItem
               key={item.id}
+              ref={(el) => {
+                if (el) itemRefs.current.set(item.id, el)
+                else itemRefs.current.delete(item.id)
+              }}
               name={item.business.name}
               address={[item.address, item.address2].filter(Boolean).join(', ')}
               description={item.business.description ?? undefined}
               selected={selectedId === item.id}
               onClick={() => setSelectedId(item.id)}
-              onMouseEnter={() => setSelectedId(item.id)}
-              onMouseLeave={() => setSelectedId(null)}
             />
           ))}
         </aside>

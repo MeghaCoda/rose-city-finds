@@ -152,7 +152,7 @@ export default function DesignSystemPage() {
   const priceFilters = useToggleSet(['free'])
   const foodFilters = useToggleSet()
   const eligibility = useToggleSet(['anyone'])
-  const chipDemo = useToggleSet(['free'])
+  const chipDemo = useToggleSet(['Free'])
   const [tab, setTab] = useState('list')
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
 

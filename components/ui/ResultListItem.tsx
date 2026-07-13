@@ -11,6 +11,7 @@ interface ResultListItemProps {
   onMouseEnter?: () => void
   onMouseLeave?: () => void
   className?: string
+  ref?: React.Ref<HTMLDivElement>
 }
 
 export function ResultListItem({
@@ -22,9 +23,11 @@ export function ResultListItem({
   onMouseEnter,
   onMouseLeave,
   className,
+  ref,
 }: ResultListItemProps) {
   return (
     <div
+      ref={ref}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
