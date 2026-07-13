@@ -1,57 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
-type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-
-// The types below (ResourceHoursRow/ResourceRow/PhysicalLocationRow) no
-// longer back any live query — resources/physical_locations/resource_hours
-// were dropped in favor of businesses/offers/locations. They're kept only
-// because __tests__/schemas/zodSchema.test.ts still exercises the matching
-// zod schemas directly as schema-validation unit tests.
-export type ResourceHoursRow = {
-  id: string;
-  physical_location_id: string;
-  day: DayOfWeek;
-  opens_at: string;
-  closes_at: string;
-  notes: string | null;
-  valid_from: string | null;
-  valid_until: string | null;
-};
-
-export type ResourceRow = {
-  id: string;
-  name: string;
-  description: string | null;
-  offer_desc: string | null;
-  offer_source: string | null;
-  benefits: string[] | null;
-  verification_status: 'pending' | 'verified' | 'rejected' | 'delisted' | null;
-  expires_at: string | null;
-  is_active: boolean | null;
-  created_by: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-export type PhysicalLocationRow = {
-  id: string;
-  resource_id: string;
-  address: string;
-  address2: string | null;
-  city: string;
-  state: string;
-  zip_code: string;
-  neighborhood: string | null;
-  latitude: number;
-  longitude: number;
-  phone_number: string | null;
-  verification_status: 'pending' | 'verified' | 'rejected' | 'delisted' | null;
-  created_at: string | null;
-  resources: ResourceRow | null;
-  resource_hours: ResourceHoursRow[];
-};
-
 // ── New schema: businesses / offers / locations ────────────────────
 // Rooted at locations (one row per physical location = one map pin),
 // with the business it belongs to and the offers actually available

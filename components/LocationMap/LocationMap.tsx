@@ -50,6 +50,13 @@ const FALLBACK_CENTER: [number, number] = [45.523, -122.6765];
 const FALLBACK_ZOOM = 13;
 const USER_ZOOM = 15;
 
+// Below this distance, a pin selection flies at the default (snappy) speed.
+// Beyond it, the flight gets a longer duration so a cross-town jump doesn't
+// feel like a jump-cut.
+const LONG_FLIGHT_DISTANCE_METERS = 16_000; // ~10 miles
+const DEFAULT_FLY_DURATION = 0.75; // seconds
+const LONG_FLY_DURATION = 1.5; // seconds
+
 function GeolocationController() {
   const map = useMap();
 
@@ -91,6 +98,27 @@ function hasCoordinates<T extends Location>(item: T): item is T & { latitude: nu
   return Number.isFinite(item.latitude) && Number.isFinite(item.longitude);
 }
 
+function SelectionController<T extends Location>({ selectedId, data }: { selectedId?: string | null; data: T[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const item = data.find((d) => d.id === selectedId);
+    if (!item || !hasCoordinates(item)) return;
+    try {
+      const target = L.latLng(item.latitude, item.longitude);
+      const distance = map.getCenter().distanceTo(target);
+      const duration = distance > LONG_FLIGHT_DISTANCE_METERS ? LONG_FLY_DURATION : DEFAULT_FLY_DURATION;
+      map.flyTo(target, map.getZoom(), { animate: true, duration });
+    } catch {
+      // no-op: map may not be ready yet
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  return null;
+}
+
 function ResourceMap<T extends Location>({ onSelect, data, selectedId }: ResourceMapProps<T>) {
     return (
       <div className="h-full w-full min-w-0">
@@ -100,6 +128,7 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <GeolocationController />
+          <SelectionController selectedId={selectedId} data={data} />
           <MarkerClusterGroup>
             {data.filter(hasCoordinates).map(item => (
                 <Marker

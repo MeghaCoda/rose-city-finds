@@ -33,6 +33,18 @@ Never edit a migration that has already been pushed — create a new one instead
 If creating seed data, modify generate-bulk-seed.mjs and use that to modify
 the seed.sql file. Do not directly modify seed.sql.
 
+## React / library API drift
+
+Check the installed major version (`package.json`) before using any API you
+recall from training data, not just for Next.js — training data skews old and
+this project tracks current releases. Concretely: this project is on React 19,
+where `ref` is a normal prop on function components and `forwardRef` is
+legacy/deprecated (https://react.dev/reference/react/forwardRef) — don't
+reach for `forwardRef` here. When in doubt, check the version in
+`package.json` and the type defs in `node_modules/<pkg>` before writing code
+that touches a component/hook API, the same way AGENTS.md already asks for
+Next.js.
+
 ## General
 
 Prefer showing a diff-level summary of every file touched for any multi-file
