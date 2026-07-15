@@ -9,6 +9,7 @@ import { EligibilityCard } from '@/components/ui/EligibilityCard'
 import { CtaBar } from '@/components/ui/CtaBar'
 import { TabBar } from '@/components/ui/TabBar'
 import { ResultListItem } from '@/components/ui/ResultListItem'
+import { ResultDetailView } from '@/components/ui/ResultDetailView'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { StandardButton } from '@/components/ui/StandardButton'
@@ -16,6 +17,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useSearchFilters } from '@/stores/searchFilters.store'
 import { toParams } from '@/stores/searchFilters.url'
+import type { LocationWithOffers } from '@/schemas/zodSchema'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -220,6 +222,58 @@ export default function DesignSystemPage() {
     { id: '2', name: 'SE Community Kitchen',    address: '1847 SE Division St', description: 'Hot meals served Mon/Wed/Fri 11am–1pm.' },
     { id: '3', name: 'Eastside Senior Meals',   address: '3201 SE 82nd Ave', description: 'For adults 60+. Call ahead to register.' },
   ]
+
+  // ResultDetailView demo
+  const DEMO_LOCATION: LocationWithOffers = {
+    id: 'loc-demo',
+    business_id: 'biz-demo',
+    address: '742 NE Alberta St',
+    address2: null,
+    city: 'Portland',
+    state: 'OR',
+    zip_code: '97211',
+    neighborhood: 'Alberta Arts',
+    latitude: 45.559,
+    longitude: -122.652,
+    phone_number: '(503) 555-0142',
+    food_formats: ['pickup', 'grocery'],
+    verification_status: 'verified',
+    notes: null,
+    location_hours: [
+      { id: 'h1', day: 'monday', opens_at: '09:00', closes_at: '17:00', notes: null },
+      { id: 'h2', day: 'wednesday', opens_at: '09:00', closes_at: '17:00', notes: null },
+      { id: 'h3', day: 'friday', opens_at: '09:00', closes_at: '13:00', notes: 'Closed on holidays' },
+    ],
+    business: {
+      id: 'biz-demo',
+      name: 'NE Portland Food Pantry',
+      description: 'Open weekdays. No documentation required.',
+      venue_type: 'food_pantry',
+      verification_status: 'verified',
+      is_active: true,
+      notes: null,
+    },
+    offers: [
+      {
+        id: 'offer-demo',
+        business_id: 'biz-demo',
+        name: 'Free Groceries',
+        description: 'A week’s worth of shelf-stable and fresh groceries.',
+        price_type: ['free'],
+        eligibility: ['anyone'],
+        proof_required: true,
+        proof_desc: 'Photo ID',
+        expires_at: null,
+        is_seasonal: false,
+        season_start_date: null,
+        season_end_date: null,
+        is_active: true,
+        verification_status: 'verified',
+        notes: null,
+        offer_hours: [],
+      },
+    ],
+  }
 
   const MAP_TABS = [
     { value: 'list', label: 'List', icon: <IconList size={15} stroke={1.5} /> },
@@ -532,6 +586,48 @@ export default function DesignSystemPage() {
           <Item>
             <Label>Selected/hover bg</Label>
             <Token>bg-accent/20 · bg-accent/10</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── ResultDetailView ──────────────────────────────────────── */}
+      <Section
+        title="ResultDetailView"
+        note="Detail pane shown in the list panel when a result is selected. Replaces the ResultListItem list; a back button returns to it. Filters out inactive/expired offers."
+      >
+        <AppBg>
+          <div className="bg-surface-0 rounded-xl border border-border overflow-hidden max-h-105 overflow-y-auto">
+            <ResultDetailView location={DEMO_LOCATION} onBack={() => {}} />
+          </div>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Back button</Label>
+            <Token>text-text-secondary → hover:text-text-primary</Token>
+          </Item>
+          <Item>
+            <Label>Venue type</Label>
+            <Token>11px / 600 / uppercase / tracking-widest / text-text-muted</Token>
+          </Item>
+          <Item>
+            <Label>Business name</Label>
+            <Token>18px / 700 / text-text-primary</Token>
+          </Item>
+          <Item>
+            <Label>Food format badge</Label>
+            <Token>bg-surface-1 border-border text-text-secondary</Token>
+          </Item>
+          <Item>
+            <Label>Offer card</Label>
+            <Token>bg-surface-1 border border-border rounded-xl</Token>
+          </Item>
+          <Item>
+            <Label>Price badge</Label>
+            <Token>bg-primary-200 text-primary-800</Token>
+          </Item>
+          <Item>
+            <Label>Eligibility badge</Label>
+            <Token>bg-secondary-200 text-secondary-800</Token>
           </Item>
         </Row>
       </Section>

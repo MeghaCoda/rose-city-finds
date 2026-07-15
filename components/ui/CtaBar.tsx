@@ -19,10 +19,6 @@ export function CtaBar({ label, sublabel, onClick, className }: CtaBarProps) {
         className
       )}
     >
-      <span
-        className="shrink-0 w-5 h-5 rounded-[3px] border-2 border-text-inverse"
-        aria-hidden
-      />
       <span className="flex items-baseline gap-1.5">
         <span className="text-base font-bold text-text-inverse">{label}</span>
         {sublabel && (
