@@ -57,6 +57,41 @@ const LONG_FLIGHT_DISTANCE_METERS = 16_000; // ~10 miles
 const DEFAULT_FLY_DURATION = 0.75; // seconds
 const LONG_FLY_DURATION = 1.5; // seconds
 
+// On the mobile list/map toggle, the map stays mounted but hidden
+// (display: none) behind the list, so it mounts at zero size.
+
+// flyTo() computes its animation curve from the container's pixel size, so
+// firing it while hidden divides by a zero-size container and produces NaN —
+// which throws asynchronously inside flyTo's own animation frame, not
+// catchable at the call site. Jump instantly instead when there's no size to
+// animate within.
+function flyToSafe(map: L.Map, target: L.LatLngExpression, zoom: number, options: L.ZoomPanOptions) {
+  const size = map.getSize();
+  if (size.x === 0 || size.y === 0) {
+    map.setView(target, zoom, { animate: false });
+    return;
+  }
+  map.flyTo(target, zoom, options);
+}
+
+// Switching tabs makes the map visible again but Leaflet never recalculates
+// its size on its own, leaving it stuck rendering at that stale near-zero
+// size. Watch the container and invalidate on resize.
+function ResizeController() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
+
 function GeolocationController() {
   const map = useMap();
 
@@ -70,7 +105,7 @@ function GeolocationController() {
         const { latitude, longitude } = pos.coords;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
         try {
-          map.flyTo([latitude, longitude], USER_ZOOM, { animate: true, duration: 1.5 });
+          flyToSafe(map, [latitude, longitude], USER_ZOOM, { animate: true, duration: 1.5 });
         } catch {
           // no-op: map may not be ready yet
         }
@@ -109,7 +144,7 @@ function SelectionController<T extends Location>({ selectedId, data }: { selecte
       const target = L.latLng(item.latitude, item.longitude);
       const distance = map.getCenter().distanceTo(target);
       const duration = distance > LONG_FLIGHT_DISTANCE_METERS ? LONG_FLY_DURATION : DEFAULT_FLY_DURATION;
-      map.flyTo(target, map.getZoom(), { animate: true, duration });
+      flyToSafe(map, target, map.getZoom(), { animate: true, duration });
     } catch {
       // no-op: map may not be ready yet
     }
@@ -127,6 +162,7 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <ResizeController />
           <GeolocationController />
           <SelectionController selectedId={selectedId} data={data} />
           <MarkerClusterGroup>

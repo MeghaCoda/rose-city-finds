@@ -17,6 +17,9 @@ vi.mock('leaflet', () => ({
 }))
 
 const mockFlyTo = vi.fn()
+const mockSetView = vi.fn()
+const mockGetContainer = vi.fn(() => document.createElement('div'))
+const mockGetSize = vi.fn(() => ({ x: 100, y: 100 }))
 
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => (
@@ -37,8 +40,19 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="popup">{children}</div>
   ),
-  useMap: vi.fn(() => ({ flyTo: mockFlyTo })),
+  useMap: vi.fn(() => ({
+    flyTo: mockFlyTo,
+    setView: mockSetView,
+    getContainer: mockGetContainer,
+    getSize: mockGetSize,
+  })),
 }))
+
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
 vi.mock('react-leaflet-markercluster', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
@@ -50,6 +64,7 @@ import ResourceMap from '@/components/LocationMap/LocationMap'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubGlobal('ResizeObserver', MockResizeObserver)
 })
 
 afterEach(() => {
