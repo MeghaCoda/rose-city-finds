@@ -74,7 +74,7 @@ export const SIGNING_IN_LABEL = 'Signing in…';
 // Upload form — mode selector
 export const MODE_SELECTOR_HEADER = 'What would you like to do?';
 export const UPLOAD_NEW_TITLE = 'Upload new data';
-export const UPLOAD_NEW_DESC = 'Add a single offer or import from CSV';
+export const UPLOAD_NEW_DESC = 'Add a single business, location, or offer';
 export const MODIFY_TITLE = 'Modify existing data';
 export const MODIFY_DESC = 'Edit an existing offer and its locations';
 export const APPROVE_TITLE = 'Approve pending data';
@@ -82,13 +82,28 @@ export const APPROVE_DESC = 'Review and approve or reject resources awaiting ver
 
 // Upload panel
 export const UPLOAD_PANEL_TITLE = 'Upload new offers';
-export const UPLOAD_PANEL_SUBTITLE = 'Choose how you would like to add data.';
-export const SINGLE_ENTRY_LABEL = 'Single entry';
-export const CSV_UPLOAD_LABEL = 'CSV upload';
+export const UPLOAD_PANEL_SUBTITLE = 'Search for an existing business or create a new one, then add a location and/or offer.';
+
+// Business step
+export const BUSINESS_STEP_LEGEND = 'Business';
+export const BUSINESS_SEARCH_PLACEHOLDER = 'Search businesses by name…';
+export const BUSINESS_SEARCHING_LABEL = 'Searching…';
+export const CREATE_NEW_BUSINESS_PREFIX = '+ Create new business "';
+export const CHANGE_BUSINESS_LABEL = 'Change business';
+
+// Location step
+export const LOCATION_STEP_LEGEND = 'Location';
+export const ADD_NEW_LOCATION_LABEL = '+ Add a new location';
+export const NO_LOCATION_LABEL = 'No location for this offer';
+
+// Offer step
+export const OFFER_STEP_LEGEND = 'Offer';
+export const ADD_NEW_OFFER_LABEL = '+ Add a new offer';
+export const OFFER_NAME_LABEL = 'Offer Name';
 
 // Shared offer form labels
 export const OFFER_DETAILS_LEGEND = 'Offer Details';
-export const NAME_LABEL = 'Name';
+export const NAME_LABEL = 'Business Name';
 export const DESCRIPTION_LABEL = 'Description';
 export const VENUE_TYPE_LABEL = 'Venue Type';
 export const OFFER_DESC_LABEL = 'Offer Description';
@@ -102,9 +117,6 @@ export const NOTES_LABEL = 'Notes';
 
 // Location form labels
 export const LOCATION_LEGEND = 'Location';
-export const LOCATION_OPTIONAL_HINT = '(optional)';
-export const LOCATION_REQUIRED_HINT =
-  'If any location field is filled, address, city, state, and zip code are all required.';
 export const ADDRESS_LABEL = 'Address';
 export const ADDRESS2_LABEL = 'Address 2';
 export const CITY_LABEL = 'City';
@@ -135,20 +147,24 @@ export const SUBMITTING_LABEL = 'Submitting…';
 export const SUBMIT_LABEL = 'Submit';
 export const SAVING_LABEL = 'Saving…';
 export const SAVE_CHANGES_LABEL = 'Save Changes';
-export const UPLOADING_LABEL = 'Uploading…';
 
 // Success messages
 export const OFFER_CREATED_SUCCESS = 'Offer created successfully.';
 export const OFFER_UPDATED_SUCCESS = 'Offer updated successfully.';
 
 // Fix required validation errors
-export const VALIDATION_NAME_REQUIRED = 'Name is required.';
-export const VALIDATION_ADDRESS_REQUIRED = 'Address is required when adding a location.';
-export const VALIDATION_CITY_REQUIRED = 'City is required when adding a location.';
-export const VALIDATION_STATE_REQUIRED = 'State is required when adding a location.';
-export const VALIDATION_ZIP_REQUIRED = 'Zip code is required when adding a location.';
-export const VALIDATION_LOCATION_FOR_HOURS = 'A location is required when adding hours.';
+export const VALIDATION_NAME_REQUIRED = 'Business name is required.';
+export const VALIDATION_ADDRESS_REQUIRED = 'Address is required.';
+export const VALIDATION_CITY_REQUIRED = 'City is required.';
+export const VALIDATION_STATE_REQUIRED = 'State is required.';
+export const VALIDATION_ZIP_REQUIRED = 'Zip code is required.';
 export const VALIDATION_ERRORS_HEADER = 'Please fix the following:';
+export const VALIDATION_BUSINESS_REQUIRED = 'Choose or create a business.';
+export const VALIDATION_LOCATION_CHOICE_REQUIRED = 'Choose a location option.';
+export const VALIDATION_OFFER_CHOICE_REQUIRED = 'Choose an offer option.';
+export const VALIDATION_OFFER_NAME_REQUIRED = 'Offer name is required.';
+export const VALIDATION_OFFER_NEEDS_LOCATION =
+  'An existing offer can only be attached to a location — choose or add one.';
 
 // Modify panel
 export const MODIFY_PANEL_TITLE = 'Modify existing offer';
@@ -157,17 +173,6 @@ export const LOADING_OFFERS_LABEL = 'Loading offers…';
 export const SELECT_OFFER_PLACEHOLDER = '— Select an offer —';
 export const LOCATIONS_SECTION_TITLE = 'Locations';
 export const NO_LOCATIONS_MESSAGE = 'No locations associated with this offer.';
-
-// CSV section
-export const CSV_COLUMN_NAMES =
-  'name, description, venue_type, offer_desc, offer_source, price_type, eligibility, expires_at, is_active, notes, address, address2, city, state, zip_code, neighborhood, phone_number, location_notes';
-export const CSV_MULTI_BENEFIT_HINT =
-  'Separate multiple price_type/eligibility values with commas. If any location field is present, address, city, state, and zip_code are all required.';
-export const CSV_DOWNLOAD_LABEL = 'Download example CSV';
-export const CSV_FILE_LABEL = 'CSV File';
-export const CSV_TABLE_NAME = 'Name';
-export const CSV_TABLE_BENEFITS = 'Price / Eligibility';
-export const CSV_TABLE_LOCATION = 'Location';
 
 // Approval panel
 export const APPROVAL_PANEL_TITLE = 'Pending approval';

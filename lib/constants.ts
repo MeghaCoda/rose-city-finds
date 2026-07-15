@@ -2,6 +2,50 @@ import type { DayOfWeek } from '@/types/utils';
 
 export const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+export const DAY_LABELS: Record<DayOfWeek, string> = {
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+export const VENUE_TYPE_LABELS: Record<string, string> = {
+  food_pantry: 'Food Pantry',
+  food_bank: 'Food Bank',
+  restaurant: 'Restaurant',
+  cafe: 'Cafe',
+  grocery_store: 'Grocery Store',
+  farmers_market: 'Farmers Market',
+  community_organization: 'Community Organization',
+  other: 'Other',
+};
+
+export const PRICE_TYPE_LABELS: Record<string, string> = {
+  free: 'Free',
+  discount: 'Discount',
+};
+
+export const ELIGIBILITY_TYPE_LABELS: Record<string, string> = {
+  anyone: 'Anyone',
+  student: 'Student',
+  senior: 'Senior',
+  kids: 'Kids',
+  military: 'Military',
+  snap: 'SNAP',
+  income_requirement: 'Income Requirement',
+  other: 'Other',
+};
+
+export const FOOD_FORMAT_LABELS: Record<string, string> = {
+  dine_in: 'Dine-in',
+  grocery: 'Groceries',
+  pickup: 'Pickup',
+  delivery: 'Delivery',
+};
+
 export const APP_NAME = 'Rose City Finds';
 export const CONTACT_EMAIL = 'rosecityfinds.info@gmail.com';
 

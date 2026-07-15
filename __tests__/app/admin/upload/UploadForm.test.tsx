@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { UploadForm } from '@/app/admin/upload/UploadForm'
 
 vi.mock('@/app/admin/upload/actions', () => ({
-  uploadOffers: vi.fn(),
+  submitOfferEntry: vi.fn(),
+  searchBusinesses: vi.fn().mockResolvedValue([]),
+  getBusinessDetail: vi.fn(),
   getOffers: vi.fn().mockResolvedValue([]),
   getOfferWithLocations: vi.fn(),
   updateOffer: vi.fn(),
@@ -26,32 +28,13 @@ describe('UploadForm', () => {
     render(<UploadForm adminUserId={ADMIN_ID} />)
     fireEvent.click(screen.getByText('Upload new data'))
     expect(screen.getByText('Upload new offers')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /single entry/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /csv upload/i })).toBeInTheDocument()
-  })
-
-  it('shows the single entry form by default in the upload panel', () => {
-    render(<UploadForm adminUserId={ADMIN_ID} />)
-    fireEvent.click(screen.getByText('Upload new data'))
-    expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument()
   })
 
-  it('switches to the CSV section when "CSV upload" tab is clicked', () => {
+  it('shows the business search step by default in the upload panel', () => {
     render(<UploadForm adminUserId={ADMIN_ID} />)
     fireEvent.click(screen.getByText('Upload new data'))
-    fireEvent.click(screen.getByRole('button', { name: /csv upload/i }))
-    expect(screen.getByLabelText('CSV File')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument()
-  })
-
-  it('switches back to single entry when "Single entry" tab is clicked', () => {
-    render(<UploadForm adminUserId={ADMIN_ID} />)
-    fireEvent.click(screen.getByText('Upload new data'))
-    fireEvent.click(screen.getByRole('button', { name: /csv upload/i }))
-    fireEvent.click(screen.getByRole('button', { name: /single entry/i }))
-    expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText('CSV File')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search businesses by name/i)).toBeInTheDocument()
   })
 
   it('returns to the mode picker when the back button is clicked', () => {

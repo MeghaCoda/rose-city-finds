@@ -9,11 +9,15 @@ import { EligibilityCard } from '@/components/ui/EligibilityCard'
 import { CtaBar } from '@/components/ui/CtaBar'
 import { TabBar } from '@/components/ui/TabBar'
 import { ResultListItem } from '@/components/ui/ResultListItem'
+import { ResultDetailView } from '@/components/ui/ResultDetailView'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { StandardButton } from '@/components/ui/StandardButton'
+import { Combobox } from '@/components/ui/combobox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useSearchFilters } from '@/stores/searchFilters.store'
 import { toParams } from '@/stores/searchFilters.url'
+import type { LocationWithOffers } from '@/schemas/zodSchema'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -156,6 +160,34 @@ export default function DesignSystemPage() {
   const [tab, setTab] = useState('list')
   const [selectedResult, setSelectedResult] = useState<string | null>(null)
 
+  // Combobox demo
+  const COMBOBOX_DEMO_ITEMS = [
+    { id: '1', name: 'NE Portland Food Pantry' },
+    { id: '2', name: 'SE Community Kitchen' },
+    { id: '3', name: 'Eastside Senior Meals' },
+  ]
+  const CREATE_NEW_DEMO_ID = '__create_new__'
+  type ComboboxDemoItem = { id: string; name: string }
+  const [comboboxInputValue, setComboboxInputValue] = useState('')
+  const [comboboxValue, setComboboxValue] = useState<ComboboxDemoItem | null>(null)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+  const trimmedComboboxInput = comboboxInputValue.trim()
+  const comboboxResults = trimmedComboboxInput
+    ? COMBOBOX_DEMO_ITEMS.filter((item) =>
+        item.name.toLowerCase().includes(trimmedComboboxInput.toLowerCase())
+      )
+    : COMBOBOX_DEMO_ITEMS
+  const comboboxHasExactMatch = comboboxResults.some(
+    (item) => item.name.toLowerCase() === trimmedComboboxInput.toLowerCase()
+  )
+  const comboboxItems: ComboboxDemoItem[] =
+    trimmedComboboxInput && !comboboxHasExactMatch
+      ? [...comboboxResults, { id: CREATE_NEW_DEMO_ID, name: trimmedComboboxInput }]
+      : comboboxResults
+
+  // RadioGroup demo
+  const [radioDemoValue, setRadioDemoValue] = useState('existing-a')
+
   // FilterDrawer demo
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { reset: resetFilters } = useSearchFilters()
@@ -190,6 +222,58 @@ export default function DesignSystemPage() {
     { id: '2', name: 'SE Community Kitchen',    address: '1847 SE Division St', description: 'Hot meals served Mon/Wed/Fri 11am–1pm.' },
     { id: '3', name: 'Eastside Senior Meals',   address: '3201 SE 82nd Ave', description: 'For adults 60+. Call ahead to register.' },
   ]
+
+  // ResultDetailView demo
+  const DEMO_LOCATION: LocationWithOffers = {
+    id: 'loc-demo',
+    business_id: 'biz-demo',
+    address: '742 NE Alberta St',
+    address2: null,
+    city: 'Portland',
+    state: 'OR',
+    zip_code: '97211',
+    neighborhood: 'Alberta Arts',
+    latitude: 45.559,
+    longitude: -122.652,
+    phone_number: '(503) 555-0142',
+    food_formats: ['pickup', 'grocery'],
+    verification_status: 'verified',
+    notes: null,
+    location_hours: [
+      { id: 'h1', day: 'monday', opens_at: '09:00', closes_at: '17:00', notes: null },
+      { id: 'h2', day: 'wednesday', opens_at: '09:00', closes_at: '17:00', notes: null },
+      { id: 'h3', day: 'friday', opens_at: '09:00', closes_at: '13:00', notes: 'Closed on holidays' },
+    ],
+    business: {
+      id: 'biz-demo',
+      name: 'NE Portland Food Pantry',
+      description: 'Open weekdays. No documentation required.',
+      venue_type: 'food_pantry',
+      verification_status: 'verified',
+      is_active: true,
+      notes: null,
+    },
+    offers: [
+      {
+        id: 'offer-demo',
+        business_id: 'biz-demo',
+        name: 'Free Groceries',
+        description: 'A week’s worth of shelf-stable and fresh groceries.',
+        price_type: ['free'],
+        eligibility: ['anyone'],
+        proof_required: true,
+        proof_desc: 'Photo ID',
+        expires_at: null,
+        is_seasonal: false,
+        season_start_date: null,
+        season_end_date: null,
+        is_active: true,
+        verification_status: 'verified',
+        notes: null,
+        offer_hours: [],
+      },
+    ],
+  }
 
   const MAP_TABS = [
     { value: 'list', label: 'List', icon: <IconList size={15} stroke={1.5} /> },
@@ -506,6 +590,48 @@ export default function DesignSystemPage() {
         </Row>
       </Section>
 
+      {/* ── ResultDetailView ──────────────────────────────────────── */}
+      <Section
+        title="ResultDetailView"
+        note="Detail pane shown in the list panel when a result is selected. Replaces the ResultListItem list; a back button returns to it. Filters out inactive/expired offers."
+      >
+        <AppBg>
+          <div className="bg-surface-0 rounded-xl border border-border overflow-hidden max-h-105 overflow-y-auto">
+            <ResultDetailView location={DEMO_LOCATION} onBack={() => {}} />
+          </div>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Back button</Label>
+            <Token>text-text-secondary → hover:text-text-primary</Token>
+          </Item>
+          <Item>
+            <Label>Venue type</Label>
+            <Token>11px / 600 / uppercase / tracking-widest / text-text-muted</Token>
+          </Item>
+          <Item>
+            <Label>Business name</Label>
+            <Token>18px / 700 / text-text-primary</Token>
+          </Item>
+          <Item>
+            <Label>Food format badge</Label>
+            <Token>bg-surface-1 border-border text-text-secondary</Token>
+          </Item>
+          <Item>
+            <Label>Offer card</Label>
+            <Token>bg-surface-1 border border-border rounded-xl</Token>
+          </Item>
+          <Item>
+            <Label>Price badge</Label>
+            <Token>bg-primary-200 text-primary-800</Token>
+          </Item>
+          <Item>
+            <Label>Eligibility badge</Label>
+            <Token>bg-secondary-200 text-secondary-800</Token>
+          </Item>
+        </Row>
+      </Section>
+
       {/* ── StatusBadge ───────────────────────────────────────────── */}
       <Section
         title="StatusBadge"
@@ -549,6 +675,78 @@ export default function DesignSystemPage() {
           <Item>
             <Label>Footer</Label>
             <Token>border-t border-border, space-between</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── Combobox ──────────────────────────────────────────────── */}
+      <Section
+        title="Combobox"
+        note="Base UI combobox wrapper for server-driven search — type to filter, select an existing item, or fall through to a 'create new' item. Used by the admin uploader's business search."
+      >
+        <AppBg>
+          <Combobox.Root
+            items={comboboxItems}
+            filter={null}
+            inputValue={comboboxInputValue}
+            onInputValueChange={setComboboxInputValue}
+            value={comboboxValue}
+            onValueChange={(item: ComboboxDemoItem | null) => setComboboxValue(item)}
+            open={comboboxOpen}
+            onOpenChange={setComboboxOpen}
+            itemToStringLabel={(item: ComboboxDemoItem) => item.name}
+            isItemEqualToValue={(a: ComboboxDemoItem, b: ComboboxDemoItem) => a.id === b.id}
+          >
+            <Combobox.Input placeholder="Search businesses by name…" />
+            <Combobox.Portal>
+              <Combobox.Positioner>
+                <Combobox.Popup>
+                  <Combobox.Empty>No matches.</Combobox.Empty>
+                  <Combobox.List>
+                    {(item: ComboboxDemoItem) => (
+                      <Combobox.Item key={item.id} value={item}>
+                        {item.id === CREATE_NEW_DEMO_ID ? `+ Create new business "${item.name}"` : item.name}
+                      </Combobox.Item>
+                    )}
+                  </Combobox.List>
+                </Combobox.Popup>
+              </Combobox.Positioner>
+            </Combobox.Portal>
+          </Combobox.Root>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Popup</Label>
+            <Token>bg-surface-1 border-border shadow-lg</Token>
+          </Item>
+          <Item>
+            <Label>Highlighted item</Label>
+            <Token>bg-accent/10</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── RadioGroup ────────────────────────────────────────────── */}
+      <Section
+        title="RadioGroup"
+        note="Base UI radio group wrapper — used by the admin uploader to let an admin pick an existing location/offer or add a new one."
+      >
+        <AppBg>
+          <RadioGroup value={radioDemoValue} onValueChange={setRadioDemoValue}>
+            <RadioGroupItem value="existing-a" label="742 NE Alberta St" />
+            <RadioGroupItem value="existing-b" label="1847 SE Division St" />
+            <RadioGroupItem value="new" label="+ Add a new location" />
+            <RadioGroupItem value="none" label="No location for this offer" />
+          </RadioGroup>
+        </AppBg>
+        <Row>
+          <Item>
+            <Label>Selected</Label>
+            <Token>border-primary bg-primary-subtle</Token>
+          </Item>
+          <Item>
+            <Label>Indicator</Label>
+            <Token>bg-primary dot inside Radio.Root</Token>
           </Item>
         </Row>
       </Section>

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
-import { DEFAULT_VENUE_TYPE } from './uploadConstants';
+import { DEFAULT_VENUE_TYPE, VALID_VENUE_TYPES, VALID_PRICE_TYPES, VALID_ELIGIBILITY_TYPES } from './uploadConstants';
 
 function makeAuthClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
@@ -78,8 +78,8 @@ export async function signOut() {
 // ============================================================
 // Offers (businesses + their primary offer)
 //
-// This admin flow always creates one business with exactly one offer at a
-// time (see uploadOffers below), so "an offer" here means that
+// This admin flow always creates/targets one business with one offer per
+// submission (see submitOfferEntry below), so "an offer" here means that
 // business+offer bundle -- selected/edited by the business's id and name,
 // matching how the UI already talks about "offers" as the thing being
 // managed. A business ending up with more than one offer (e.g. from manual
@@ -400,235 +400,318 @@ async function geocodeAddress(
 }
 
 // ============================================================
-// CSV batch upload
-//
-// Each row creates one business + one offer (linked via offer_locations to
-// the row's location, if any). offer_source has no column of its own in the
-// new schema, so it's folded into the offer's notes as "Source: <url>"
-// rather than silently dropped.
+// Business search + detail (used by the single-entry form to let an admin
+// reuse an existing business/location/offer instead of creating a
+// near-duplicate)
 // ============================================================
 
-export type CSVOfferRow = {
-  name: string;
-  description?: string;
-  venue_type?: string;
-  offer_desc?: string;
-  offer_source?: string;
-  price_type?: string[];
-  eligibility?: string[];
-  expires_at?: string;
-  is_active?: boolean;
-  notes?: string;
-  location?: {
-    address: string;
-    address2?: string;
-    city: string;
-    state: string;
-    zip_code: string;
-    neighborhood?: string;
-    phone_number?: string;
-    notes?: string;
-    hours?: Array<{
-      day: string;
-      opens_at: string;
-      closes_at: string;
-      notes?: string;
-    }>;
-  };
-};
+export type BusinessOption = { id: string; name: string };
 
-export type BatchUploadResult = {
-  success?: true;
-  created: number;
-  skipped: number;
-  error?: string;
-};
-
-export async function uploadOffers(
-  rows: CSVOfferRow[],
-  adminUserId: string
-): Promise<BatchUploadResult> {
+export async function searchBusinesses(query: string): Promise<BusinessOption[]> {
   const session = await requireAdmin();
-  if (!session) return { created: 0, skipped: 0, error: 'Unauthorized. Please sign in as admin.' };
+  if (!session) return [];
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return [];
 
   const db = makeUserClient(session.token);
-  let created = 0;
-  let skipped = 0;
-  let geocodeCount = 0;
+  const { data, error } = await db
+    .from('businesses')
+    .select('id, name')
+    .ilike('name', `%${trimmed}%`)
+    .order('name')
+    .limit(20);
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const csvRow = i + 2; // row 1 is the header
+  if (error || !data) return [];
+  return data as BusinessOption[];
+}
 
-    const { data: existingBusiness } = await db
-      .from('businesses')
-      .select('id')
-      .ilike('name', row.name)
-      .maybeSingle();
+export type BusinessLocationOption = {
+  id: string;
+  address: string;
+  address2: string | null;
+  city: string;
+  state: string;
+  zip_code: string;
+};
 
-    if (existingBusiness) {
-      skipped++;
-      continue;
+export type BusinessOfferOption = { id: string; name: string };
+
+export type BusinessDetail = {
+  locations: BusinessLocationOption[];
+  offers: BusinessOfferOption[];
+};
+
+export async function getBusinessDetail(businessId: string): Promise<BusinessDetail | null> {
+  const session = await requireAdmin();
+  if (!session) return null;
+
+  const db = makeUserClient(session.token);
+  const [locRes, offerRes] = await Promise.all([
+    db.from('locations').select('id, address, address2, city, state, zip_code').eq('business_id', businessId).order('address'),
+    db.from('offers').select('id, name').eq('business_id', businessId).order('name'),
+  ]);
+
+  return {
+    locations: (locRes.data ?? []) as BusinessLocationOption[],
+    offers: (offerRes.data ?? []) as BusinessOfferOption[],
+  };
+}
+
+// ============================================================
+// Single-entry offer submission
+//
+// Each of business/location/offer is independently either an existing
+// record being reused or a new one being created, so re-adding to an
+// existing business reuses its id rather than creating a near-duplicate.
+// ============================================================
+
+export type OfferEntryInput = {
+  business:
+    | { mode: 'existing'; id: string }
+    | { mode: 'new'; name: string; description?: string; venue_type: string; notes?: string };
+  location:
+    | { mode: 'existing'; id: string }
+    | {
+        mode: 'new';
+        address: string;
+        address2?: string;
+        city: string;
+        state: string;
+        zip_code: string;
+        neighborhood?: string;
+        phone_number?: string;
+        notes?: string;
+        hours?: Array<{
+          day: string;
+          opens_at: string;
+          closes_at: string;
+          notes?: string;
+        }>;
+      }
+    | { mode: 'none' };
+  offer:
+    | { mode: 'existing'; id: string }
+    | {
+        mode: 'new';
+        name: string;
+        description?: string;
+        offer_source?: string;
+        price_type: string[];
+        eligibility: string[];
+        expires_at?: string;
+        is_active?: boolean;
+        notes?: string;
+      };
+};
+
+export type OfferEntryResult =
+  | { success: true; businessId: string; locationId: string | null; offerId: string }
+  | { success: false; error: string };
+
+export async function submitOfferEntry(
+  input: OfferEntryInput,
+  adminUserId: string,
+): Promise<OfferEntryResult> {
+  const session = await requireAdmin();
+  if (!session) return { success: false, error: 'Unauthorized. Please sign in as admin.' };
+
+  const db = makeUserClient(session.token);
+  const { business, location, offer } = input;
+
+  if (offer.mode === 'existing' && location.mode === 'none') {
+    return { success: false, error: 'An existing offer can only be attached to a location — choose or add one.' };
+  }
+  if (business.mode === 'new' && location.mode === 'existing') {
+    return { success: false, error: 'Cannot use an existing location for a business that has not been created yet.' };
+  }
+  if (business.mode === 'new' && offer.mode === 'existing') {
+    return { success: false, error: 'Cannot use an existing offer for a business that has not been created yet.' };
+  }
+  if (business.mode === 'new' && !VALID_VENUE_TYPES.has(business.venue_type as never)) {
+    return { success: false, error: `Invalid venue type: "${business.venue_type}".` };
+  }
+  if (offer.mode === 'new') {
+    for (const p of offer.price_type) {
+      if (!VALID_PRICE_TYPES.has(p as never)) return { success: false, error: `Invalid price type: "${p}".` };
     }
-
-    let geocoded: GeocodeResult | null = null;
-
-    if (row.location) {
-      let locQuery = db
-        .from('locations')
-        .select('id')
-        .ilike('address', row.location.address)
-        .ilike('city', row.location.city);
-
-      locQuery = row.location.address2
-        ? locQuery.ilike('address2', row.location.address2)
-        : locQuery.is('address2', null);
-
-      const { data: existingLoc } = await locQuery.maybeSingle();
-      if (existingLoc) {
-        skipped++;
-        continue;
-      }
-
-      if (geocodeCount > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      geocodeCount++;
-
-      const addrLabel = `${row.location.address}, ${row.location.city}, ${row.location.state} ${row.location.zip_code}`;
-      try {
-        geocoded = await geocodeAddress(
-          row.location.address,
-          row.location.city,
-          row.location.state,
-          row.location.zip_code,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          created,
-          skipped,
-          error: `Row ${csvRow}: geocoding failed for "${addrLabel}" — ${msg}`,
-        };
-      }
-
-      console.log(
-        `[geocode] row ${csvRow} "${addrLabel}" → accuracy=${geocoded.accuracy} type=${geocoded.accuracy_type}`,
-      );
-
-      if (geocoded.accuracy < 0.8) {
-        return {
-          created,
-          skipped,
-          error: `Row ${csvRow}: geocoding accuracy too low (${geocoded.accuracy}) for "${addrLabel}" — fix the address and re-upload`,
-        };
-      }
-      if (REJECTED_ACCURACY_TYPES.has(geocoded.accuracy_type)) {
-        return {
-          created,
-          skipped,
-          error: `Row ${csvRow}: geocoding accuracy type "${geocoded.accuracy_type}" is not precise enough for "${addrLabel}" — fix the address and re-upload`,
-        };
-      }
+    for (const e of offer.eligibility) {
+      if (!VALID_ELIGIBILITY_TYPES.has(e as never)) return { success: false, error: `Invalid eligibility type: "${e}".` };
     }
-
-    const { data: business, error: bizError } = await db
-      .from('businesses')
-      .insert({
-        name: row.name,
-        description: row.description ?? null,
-        venue_type: row.venue_type ?? DEFAULT_VENUE_TYPE,
-        verification_status: 'pending',
-        created_by: adminUserId,
-        notes: row.notes ?? null,
-      })
-      .select('id')
-      .single();
-
-    if (bizError || !business) {
-      return { created, skipped, error: `Failed to create offer "${row.name}": ${bizError?.message}` };
-    }
-
-    const offerNotes = row.offer_source ? `Source: ${row.offer_source}` : null;
-    const { data: offer, error: offerError } = await db
-      .from('offers')
-      .insert({
-        business_id: business.id,
-        name: row.name,
-        description: row.offer_desc ?? null,
-        price_type: row.price_type ?? [],
-        eligibility: row.eligibility ?? [],
-        expires_at: row.expires_at ?? null,
-        is_active: row.is_active ?? true,
-        verification_status: 'pending',
-        created_by: adminUserId,
-        notes: offerNotes,
-      })
-      .select('id')
-      .single();
-
-    if (offerError || !offer) {
-      return { created, skipped, error: `Created business "${row.name}" but failed to create its offer: ${offerError?.message}` };
-    }
-
-    if (row.location) {
-      const { data: location, error: locError } = await db.from('locations').insert({
-        business_id: business.id,
-        address: row.location.address,
-        address2: row.location.address2 ?? null,
-        city: row.location.city,
-        state: row.location.state,
-        zip_code: row.location.zip_code,
-        neighborhood: row.location.neighborhood ?? null,
-        phone_number: row.location.phone_number ?? null,
-        notes: row.location.notes ?? null,
-        latitude: geocoded?.lat ?? null,
-        longitude: geocoded?.lng ?? null,
-        verification_status: 'pending',
-        created_by: adminUserId,
-      }).select('id').single();
-      if (locError || !location) {
-        return {
-          created,
-          skipped,
-          error: `Created offer "${row.name}" but failed to add its location: ${locError?.message}`,
-        };
-      }
-
-      const { error: linkError } = await db.from('offer_locations').insert({
-        offer_id: offer.id,
-        location_id: location.id,
-      });
-      if (linkError) {
-        return {
-          created,
-          skipped,
-          error: `Created offer "${row.name}" and its location but failed to link them: ${linkError.message}`,
-        };
-      }
-
-      if (row.location.hours && row.location.hours.length > 0) {
-        const { error: hoursError } = await db.from('location_hours').insert(
-          row.location.hours.map((h) => ({
-            location_id: location.id,
-            day: h.day,
-            opens_at: h.opens_at,
-            closes_at: h.closes_at,
-            notes: h.notes ?? null,
-          }))
-        );
-        if (hoursError) {
-          return {
-            created,
-            skipped,
-            error: `Created offer "${row.name}" but failed to add its hours: ${hoursError.message}`,
-          };
-        }
-      }
-    }
-
-    created++;
   }
 
-  return { success: true, created, skipped };
+  if (business.mode === 'new') {
+    const { data: existing } = await db
+      .from('businesses')
+      .select('id, name')
+      .ilike('name', business.name)
+      .maybeSingle();
+    if (existing) {
+      return { success: false, error: `A business named "${existing.name}" already exists — search for it and select it instead.` };
+    }
+  }
+
+  let geocoded: GeocodeResult | null = null;
+
+  if (location.mode === 'new') {
+    let locQuery = db
+      .from('locations')
+      .select('id, business_id, businesses(name)')
+      .ilike('address', location.address)
+      .ilike('city', location.city)
+      .ilike('state', location.state)
+      .ilike('zip_code', location.zip_code);
+
+    locQuery = location.address2
+      ? locQuery.ilike('address2', location.address2)
+      : locQuery.is('address2', null);
+
+    const { data: conflict } = await locQuery.maybeSingle();
+    if (conflict) {
+      const conflictBusinessName =
+        (conflict as unknown as { businesses: { name: string } | null }).businesses?.name ?? 'another business';
+      return {
+        success: false,
+        error: `This address is already registered under "${conflictBusinessName}" — select that business/location instead of creating a new one.`,
+      };
+    }
+
+    const addrLabel = `${location.address}, ${location.city}, ${location.state} ${location.zip_code}`;
+    try {
+      geocoded = await geocodeAddress(location.address, location.city, location.state, location.zip_code);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: `Geocoding failed for "${addrLabel}" — ${msg}` };
+    }
+
+    if (geocoded.accuracy < 0.8) {
+      return {
+        success: false,
+        error: `Geocoding accuracy too low (${geocoded.accuracy}) for "${addrLabel}" — fix the address and try again.`,
+      };
+    }
+    if (REJECTED_ACCURACY_TYPES.has(geocoded.accuracy_type)) {
+      return {
+        success: false,
+        error: `Geocoding accuracy type "${geocoded.accuracy_type}" is not precise enough for "${addrLabel}" — fix the address and try again.`,
+      };
+    }
+  }
+
+  let businessId: string;
+  if (business.mode === 'existing') {
+    businessId = business.id;
+  } else {
+    const { data: created, error } = await db
+      .from('businesses')
+      .insert({
+        name: business.name,
+        description: business.description ?? null,
+        venue_type: business.venue_type ?? DEFAULT_VENUE_TYPE,
+        verification_status: 'pending',
+        created_by: adminUserId,
+        notes: business.notes ?? null,
+      })
+      .select('id')
+      .single();
+    if (error || !created) {
+      if (error?.code === '23505') {
+        return { success: false, error: 'A business with this name was just created — refresh and search again.' };
+      }
+      return { success: false, error: `Failed to create business "${business.name}": ${error?.message}` };
+    }
+    businessId = created.id;
+  }
+
+  let offerId: string;
+  if (offer.mode === 'existing') {
+    offerId = offer.id;
+  } else {
+    const offerNotesParts = [
+      offer.offer_source ? `Source: ${offer.offer_source}` : null,
+      offer.notes ?? null,
+    ].filter((part): part is string => !!part);
+
+    const { data: created, error } = await db
+      .from('offers')
+      .insert({
+        business_id: businessId,
+        name: offer.name,
+        description: offer.description ?? null,
+        price_type: offer.price_type,
+        eligibility: offer.eligibility,
+        expires_at: offer.expires_at ?? null,
+        is_active: offer.is_active ?? true,
+        verification_status: 'pending',
+        created_by: adminUserId,
+        notes: offerNotesParts.length > 0 ? offerNotesParts.join(' | ') : null,
+      })
+      .select('id')
+      .single();
+    if (error || !created) {
+      return { success: false, error: `Failed to create offer "${offer.name}": ${error?.message}` };
+    }
+    offerId = created.id;
+  }
+
+  let locationId: string | null = null;
+  if (location.mode === 'existing') {
+    locationId = location.id;
+  } else if (location.mode === 'new') {
+    const { data: created, error } = await db
+      .from('locations')
+      .insert({
+        business_id: businessId,
+        address: location.address,
+        address2: location.address2 ?? null,
+        city: location.city,
+        state: location.state,
+        zip_code: location.zip_code,
+        neighborhood: location.neighborhood ?? null,
+        phone_number: location.phone_number ?? null,
+        notes: location.notes ?? null,
+        latitude: geocoded!.lat,
+        longitude: geocoded!.lng,
+        verification_status: 'pending',
+        created_by: adminUserId,
+      })
+      .select('id')
+      .single();
+    if (error || !created) {
+      if (error?.code === '23505') {
+        return { success: false, error: 'This address was just added by someone else — refresh and try again.' };
+      }
+      return { success: false, error: `Failed to create location: ${error?.message}` };
+    }
+    locationId = created.id;
+
+    if (location.hours && location.hours.length > 0) {
+      const { error: hoursError } = await db.from('location_hours').insert(
+        location.hours.map((h) => ({
+          location_id: locationId,
+          day: h.day,
+          opens_at: h.opens_at,
+          closes_at: h.closes_at,
+          notes: h.notes ?? null,
+        }))
+      );
+      if (hoursError) {
+        return { success: false, error: `Created the location but failed to add its hours: ${hoursError.message}` };
+      }
+    }
+  }
+
+  if (locationId !== null) {
+    const { error: linkError } = await db.from('offer_locations').insert({
+      offer_id: offerId,
+      location_id: locationId,
+    });
+    if (linkError) {
+      if (linkError.code === '23505') {
+        return { success: false, error: 'This offer is already attached to this location.' };
+      }
+      return { success: false, error: `Failed to link the offer to the location: ${linkError.message}` };
+    }
+  }
+
+  return { success: true, businessId, locationId, offerId };
 }

@@ -51,6 +51,8 @@ describe('DesignSystemPage', () => {
       'ResultListItem',
       'StatusBadge',
       'FilterDrawer',
+      'Combobox',
+      'RadioGroup',
       'Radius scale',
     ]) {
       expect(screen.getByRole('heading', { level: 2, name: title })).toBeInTheDocument()

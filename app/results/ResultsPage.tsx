@@ -7,6 +7,7 @@ import { IconList, IconMap2 } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import type { LocationWithOffers } from '@/schemas/zodSchema'
 import { FILTER_CHIPS, API_ROUTES } from '@/lib/constants'
+import { isOfferActive } from '@/lib/utils'
 import { useSearchFilters, type FilterKey } from '@/stores/searchFilters.store'
 import { toParams, hasFilterParams, parseParams } from '@/stores/searchFilters.url'
 import { useSyncFiltersWithUrl } from '@/hooks/useSyncFiltersWithUrl'
@@ -14,6 +15,7 @@ import { TabBar } from '@/components/ui/TabBar'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { ResultListItem } from '@/components/ui/ResultListItem'
+import { ResultDetailView } from '@/components/ui/ResultDetailView'
 import { LIST_LABEL, MAP_LABEL, LOADING_RESOURCES } from './constants'
 
 const LocationMap = dynamic(() => import('@/components/LocationMap/LocationMap'), { ssr: false })
@@ -43,11 +45,7 @@ function matchesAccessType(item: LocationWithOffers, values: string[]) {
 // them — a bare /results shows every location with at least one non-expired,
 // active offer while the store's own defaults are still propagating to the URL.
 function isVisible(item: LocationWithOffers, urlFilters: { price: string[]; accessType: string[] } | null) {
-  const activeOffers = item.offers.filter((offer) => {
-    if (!offer.is_active) return false
-    if (offer.expires_at && new Date(offer.expires_at).getTime() < Date.now()) return false
-    return true
-  })
+  const activeOffers = item.offers.filter(isOfferActive)
   if (activeOffers.length === 0) return false
   if (!urlFilters) return true
   if (!matchesPrice(activeOffers, urlFilters.price)) return false
@@ -98,6 +96,7 @@ export function ResultsPage() {
 
   const urlFilters = hasFilterParams(searchParams) ? parseParams(searchParams) : null
   const visibleLocations = locations.filter((item) => isVisible(item, urlFilters))
+  const selectedLocation = visibleLocations.find((item) => item.id === selectedId) ?? null
 
   function isChipActive(key: FilterKey, value: string) {
     const state = { price, foodType, accessType, eligibility }
@@ -154,20 +153,27 @@ export function ResultsPage() {
               {LOADING_RESOURCES}
             </p>
           )}
-          {visibleLocations.map((item) => (
-            <ResultListItem
-              key={item.id}
-              ref={(el) => {
-                if (el) itemRefs.current.set(item.id, el)
-                else itemRefs.current.delete(item.id)
-              }}
-              name={item.business.name}
-              address={[item.address, item.address2].filter(Boolean).join(', ')}
-              description={item.business.description ?? undefined}
-              selected={selectedId === item.id}
-              onClick={() => setSelectedId(item.id)}
+          {selectedLocation ? (
+            <ResultDetailView
+              location={selectedLocation}
+              onBack={() => setSelectedId(null)}
             />
-          ))}
+          ) : (
+            visibleLocations.map((item) => (
+              <ResultListItem
+                key={item.id}
+                ref={(el) => {
+                  if (el) itemRefs.current.set(item.id, el)
+                  else itemRefs.current.delete(item.id)
+                }}
+                name={item.business.name}
+                address={[item.address, item.address2].filter(Boolean).join(', ')}
+                description={item.business.description ?? undefined}
+                selected={selectedId === item.id}
+                onClick={() => setSelectedId(item.id)}
+              />
+            ))
+          )}
         </aside>
 
         {/* Map panel */}
