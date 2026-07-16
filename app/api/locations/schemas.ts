@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { LocationsSchema, LocationHoursSchema } from '@/schemas/zodSchema';
 
 export const LocationInputSchema = LocationsSchema
-  .omit({ id: true })
+  .omit({ id: true, verification_status_changed_at: true })
   .extend({
     location_hours: z.array(
       LocationHoursSchema.omit({ id: true, location_id: true })

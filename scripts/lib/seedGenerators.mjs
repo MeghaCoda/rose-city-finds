@@ -41,9 +41,15 @@ export function buildHoursRows(parentId, { referenceDate, days, openTimes, close
     const opens = faker.helpers.arrayElement(openTimes);
     const closes = faker.helpers.arrayElement(closeTimes);
     rows.push(`  (${sql(parentId)}, ${sql(day)}, ${sql(opens)}, ${sql(closes)}, ` +
-      `${faker.datatype.boolean(0.15) ? sql(faker.lorem.sentence()) : "NULL"}, ${sql(validFrom)}, ${sql(validUntil)})`);
+      `${sql(validFrom)}, ${sql(validUntil)})`);
   }
   return rows;
+}
+
+// A note about the hours as a whole (e.g. "closed on holidays") -- one per
+// parent (location/offer), not per weekday row.
+export function pickHoursNotes() {
+  return faker.datatype.boolean(0.15) ? faker.lorem.sentence() : null;
 }
 
 // One event per business/location/offer that's actually been reviewed

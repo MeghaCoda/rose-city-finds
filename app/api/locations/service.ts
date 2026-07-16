@@ -29,7 +29,9 @@ function formatLocationWithOffers(row: LocationWithOffersRow): unknown {
     phone_number: row.phone_number,
     food_formats: row.food_formats,
     verification_status: row.verification_status,
+    verification_status_changed_at: row.verification_status_changed_at,
     notes: row.notes,
+    hours_notes: row.hours_notes,
     business: business && {
       id: business.id,
       name: business.name,
@@ -40,11 +42,9 @@ function formatLocationWithOffers(row: LocationWithOffersRow): unknown {
       notes: business.notes,
     },
     location_hours: (row.location_hours ?? []).map((h) => ({
-      id: h.id,
       day: h.day,
       opens_at: h.opens_at,
       closes_at: h.closes_at,
-      notes: h.notes,
       valid_from: h.valid_from,
       valid_until: h.valid_until,
     })),
@@ -66,13 +66,13 @@ function formatLocationWithOffers(row: LocationWithOffersRow): unknown {
         season_end_date: offer.season_end_date,
         is_active: offer.is_active,
         verification_status: offer.verification_status,
+        verification_status_changed_at: offer.verification_status_changed_at,
         notes: offer.notes,
+        hours_notes: offer.hours_notes,
         offer_hours: (offer.offer_hours ?? []).map((h) => ({
-          id: h.id,
           day: h.day,
           opens_at: h.opens_at,
           closes_at: h.closes_at,
-          notes: h.notes,
           valid_from: h.valid_from,
           valid_until: h.valid_until,
         })),
@@ -84,11 +84,9 @@ function formatLocationWithHours(row: { location_hours: LocationHoursRow[] } & R
   return {
     ...row,
     location_hours: (row.location_hours ?? []).map((h) => ({
-      id: h.id,
       day: h.day,
       opens_at: h.opens_at,
       closes_at: h.closes_at,
-      notes: h.notes,
       valid_from: h.valid_from,
       valid_until: h.valid_until,
     })),
@@ -110,6 +108,7 @@ function inputToLocationRow(data: Partial<LocationInput>) {
     ...(data.food_formats !== undefined && { food_formats: data.food_formats }),
     ...(data.verification_status !== undefined && { verification_status: data.verification_status }),
     ...(data.notes !== undefined && { notes: data.notes ?? null }),
+    ...(data.hours_notes !== undefined && { hours_notes: data.hours_notes ?? null }),
   };
 }
 
@@ -150,7 +149,6 @@ export async function createLocation(
       location_hours.map((h) => ({
         ...h,
         location_id: loc.id,
-        notes: h.notes ?? null,
         valid_from: h.valid_from ?? null,
         valid_until: h.valid_until ?? null,
       }))
@@ -174,7 +172,6 @@ export async function updateLocation(
         location_hours.map((h) => ({
           ...h,
           location_id: id,
-          notes: h.notes ?? null,
           valid_from: h.valid_from ?? null,
           valid_until: h.valid_until ?? null,
         }))

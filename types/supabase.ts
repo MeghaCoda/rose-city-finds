@@ -93,7 +93,6 @@ export type Database = {
           day: Database["public"]["Enums"]["day_of_week"]
           id: string
           location_id: string
-          notes: string | null
           opens_at: string
           valid_from: string | null
           valid_until: string | null
@@ -103,7 +102,6 @@ export type Database = {
           day: Database["public"]["Enums"]["day_of_week"]
           id?: string
           location_id: string
-          notes?: string | null
           opens_at: string
           valid_from?: string | null
           valid_until?: string | null
@@ -113,7 +111,6 @@ export type Database = {
           day?: Database["public"]["Enums"]["day_of_week"]
           id?: string
           location_id?: string
-          notes?: string | null
           opens_at?: string
           valid_from?: string | null
           valid_until?: string | null
@@ -137,6 +134,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           food_formats: Database["public"]["Enums"]["food_format"][]
+          hours_notes: string | null
           id: string
           latitude: number
           longitude: number
@@ -156,6 +154,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           food_formats?: Database["public"]["Enums"]["food_format"][]
+          hours_notes?: string | null
           id?: string
           latitude: number
           longitude: number
@@ -175,6 +174,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           food_formats?: Database["public"]["Enums"]["food_format"][]
+          hours_notes?: string | null
           id?: string
           latitude?: number
           longitude?: number
@@ -208,7 +208,6 @@ export type Database = {
           closes_at: string
           day: Database["public"]["Enums"]["day_of_week"]
           id: string
-          notes: string | null
           offer_id: string
           opens_at: string
           valid_from: string | null
@@ -218,7 +217,6 @@ export type Database = {
           closes_at: string
           day: Database["public"]["Enums"]["day_of_week"]
           id?: string
-          notes?: string | null
           offer_id: string
           opens_at: string
           valid_from?: string | null
@@ -228,7 +226,6 @@ export type Database = {
           closes_at?: string
           day?: Database["public"]["Enums"]["day_of_week"]
           id?: string
-          notes?: string | null
           offer_id?: string
           opens_at?: string
           valid_from?: string | null
@@ -288,6 +285,7 @@ export type Database = {
           description: string | null
           eligibility: Database["public"]["Enums"]["eligibility_type"][]
           expires_at: string | null
+          hours_notes: string | null
           id: string
           is_active: boolean
           is_seasonal: boolean
@@ -310,6 +308,7 @@ export type Database = {
           description?: string | null
           eligibility: Database["public"]["Enums"]["eligibility_type"][]
           expires_at?: string | null
+          hours_notes?: string | null
           id?: string
           is_active?: boolean
           is_seasonal?: boolean
@@ -332,6 +331,7 @@ export type Database = {
           description?: string | null
           eligibility?: Database["public"]["Enums"]["eligibility_type"][]
           expires_at?: string | null
+          hours_notes?: string | null
           id?: string
           is_active?: boolean
           is_seasonal?: boolean

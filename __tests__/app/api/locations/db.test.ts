@@ -134,7 +134,6 @@ describe('insertLocationHours', () => {
         day: 'monday',
         opens_at: '08:00:00',
         closes_at: '17:00:00',
-        notes: null,
         valid_from: null,
         valid_until: null,
       }])

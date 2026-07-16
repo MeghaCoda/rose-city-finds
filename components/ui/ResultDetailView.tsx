@@ -1,8 +1,10 @@
 'use client'
 
+import { Fragment } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { cn, formatTime, isOfferActive } from '@/lib/utils'
 import { DAYS, DAY_LABELS, VENUE_TYPE_LABELS, PRICE_TYPE_LABELS, ELIGIBILITY_TYPE_LABELS, FOOD_FORMAT_LABELS } from '@/lib/constants'
+import { HoursStatus } from '@/components/ui/HoursStatus'
 import type { LocationWithOffers } from '@/schemas/zodSchema'
 
 type Hours = LocationWithOffers['location_hours']
@@ -21,21 +23,26 @@ function Badge({ children, className }: { children: React.ReactNode; className?:
   )
 }
 
-function HoursList({ hours }: { hours: Hours }) {
+function HoursList({ hours, notes }: { hours: Hours; notes?: string | null }) {
   if (hours.length === 0) return null
   const sorted = [...hours].sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day))
   return (
-    <ul className="flex flex-col gap-0.5">
-      {sorted.map((h) => (
-        <li key={h.id} className="flex gap-2 text-sm text-text-secondary">
-          <span className="w-24 shrink-0 font-medium text-text-primary">{DAY_LABELS[h.day]}</span>
-          <span>
-            {formatTime(h.opens_at)}–{formatTime(h.closes_at)}
-          </span>
-          {h.notes && <span className="text-text-muted">({h.notes})</span>}
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-1.5">
+      {/* Fragments (not <li> wrappers) so each row's cells are direct grid
+          children — Safari doesn't size CSS Grid columns correctly when
+          they're wrapped in a display:contents element. */}
+      <div role="list" className="grid grid-cols-[auto_auto_auto_auto] gap-y-0.5 text-sm text-text-secondary">
+        {sorted.map((h) => (
+          <Fragment key={h.day}>
+            <span role="listitem" className="pr-2 font-medium text-text-primary">{DAY_LABELS[h.day]}</span>
+            <span className="text-right tabular-nums">{formatTime(h.opens_at)}</span>
+            <span className="text-text-muted mx-auto">–</span>
+            <span className="tabular-nums">{formatTime(h.closes_at)}</span>
+          </Fragment>
+        ))}
+      </div>
+      {notes && <p className="text-sm text-text-muted">{notes}</p>}
+    </div>
   )
 }
 
@@ -94,7 +101,12 @@ export function ResultDetailView({ location, onBack, className }: ResultDetailVi
       {location.location_hours.length > 0 && (
         <div>
           <SectionLabel>Hours</SectionLabel>
-          <HoursList hours={location.location_hours} />
+          <HoursStatus
+            hours={location.location_hours}
+            verifiedAt={location.verification_status === 'verified' ? location.verification_status_changed_at : null}
+            className="mb-[1lh]"
+          />
+          <HoursList hours={location.location_hours} notes={location.hours_notes} />
         </div>
       )}
 
@@ -136,7 +148,9 @@ export function ResultDetailView({ location, onBack, className }: ResultDetailVi
                   <p className="text-xs text-text-muted">Available through {offer.expires_at}</p>
                 )}
 
-                {offer.offer_hours.length > 0 && <HoursList hours={offer.offer_hours} />}
+                {offer.offer_hours.length > 0 && (
+                  <HoursList hours={offer.offer_hours} notes={offer.hours_notes} />
+                )}
               </div>
             ))}
           </div>

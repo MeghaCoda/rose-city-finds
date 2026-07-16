@@ -22,6 +22,7 @@ function makeOffer(opts: Partial<Offer> = {}): Offer {
     is_active: true,
     verification_status: 'verified',
     notes: null,
+    hours_notes: null,
     offer_hours: [],
     ...opts,
   }
@@ -43,6 +44,7 @@ function makeLocation(opts: Partial<LocationWithOffers> = {}): LocationWithOffer
     food_formats: ['pickup'],
     verification_status: 'verified',
     notes: null,
+    hours_notes: null,
     location_hours: [],
     business: {
       id: 'biz-1',
@@ -123,8 +125,8 @@ describe('ResultDetailView', () => {
       <ResultDetailView
         location={makeLocation({
           location_hours: [
-            { id: 'h2', day: 'wednesday', opens_at: '09:00', closes_at: '17:00' },
-            { id: 'h1', day: 'monday', opens_at: '09:00', closes_at: '17:00' },
+            { day: 'wednesday', opens_at: '09:00', closes_at: '17:00' },
+            { day: 'monday', opens_at: '09:00', closes_at: '17:00' },
           ],
         })}
         onBack={() => {}}
@@ -133,7 +135,25 @@ describe('ResultDetailView', () => {
     const days = screen.getAllByText(/Monday|Wednesday/)
     expect(days[0]).toHaveTextContent('Monday')
     expect(days[1]).toHaveTextContent('Wednesday')
-    expect(screen.getAllByText('9:00 AM–5:00 PM').length).toBe(2)
+    expect(screen.getAllByText('9:00 AM').length).toBe(2)
+    expect(screen.getAllByText('5:00 PM').length).toBe(2)
+  })
+
+  it('renders hours notes once, below the hours list, not per day', () => {
+    render(
+      <ResultDetailView
+        location={makeLocation({
+          location_hours: [
+            { day: 'wednesday', opens_at: '09:00', closes_at: '17:00' },
+            { day: 'monday', opens_at: '09:00', closes_at: '17:00' },
+          ],
+          hours_notes: 'Closed on holidays',
+        })}
+        onBack={() => {}}
+      />
+    )
+    const notes = screen.getAllByText('Closed on holidays')
+    expect(notes).toHaveLength(1)
   })
 
   it('calls onBack when the back button is clicked', () => {
