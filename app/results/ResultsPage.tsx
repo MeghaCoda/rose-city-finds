@@ -73,8 +73,16 @@ export function ResultsPage() {
     // A bare /results (no filter params) should adopt the store's current
     // defaults into the URL, so a shared/bookmarked link always carries the
     // actual filter values instead of silently relying on Zustand's initial state.
+    // Guard on the actual query string, not just hasFilterParams: when every
+    // chip is toggled off, the store's filters are all empty arrays, so
+    // toParams() also yields no filter keys — hasFilterParams(searchParams)
+    // would stay false forever and re-trigger this effect on every replace(),
+    // looping. Comparing strings makes the sync a no-op once nothing would change.
     if (!hasFilterParams(searchParams)) {
-      syncUrl()
+      const params = toParams(useSearchFilters.getState())
+      if (params.toString() !== searchParams.toString()) {
+        syncUrl()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])

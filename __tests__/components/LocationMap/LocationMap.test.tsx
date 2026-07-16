@@ -1,67 +1,28 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { mockLocationWithOffers } from '@/__mocks__/mockData'
 
+// ResourceMap's own job is composing MapContainer + MarkerClusterGroup +
+// LocationMarker based on `data`/`selectedId`, and wiring the shared refs
+// through to its controller children. Each of those children has its own
+// dedicated test file now, so they're mocked out here rather than
+// re-exercised -- this keeps the assertions below focused on ResourceMap's
+// own orchestration logic (which items render, in what grouping, with what
+// props) instead of re-testing geolocation/collision/selection internals
+// at the integration level too.
 vi.mock('leaflet/dist/leaflet.css', () => ({}))
+vi.mock('react-leaflet-markercluster/styles', () => ({}))
+vi.mock('@/components/LocationMap/LocationMap.css', () => ({}))
 
 vi.mock('@/components/ProtomapsLayer', () => ({
   default: () => null,
 }))
 
-vi.mock('leaflet', () => ({
-  default: {
-    Icon: {
-      Default: {
-        prototype: {},
-        mergeOptions: vi.fn(),
-      },
-    },
-    divIcon: vi.fn(() => ({})),
-  },
-}))
-
-const mockFlyTo = vi.fn()
-const mockSetView = vi.fn()
-const mockGetContainer = vi.fn(() => document.createElement('div'))
-const mockGetSize = vi.fn(() => ({ x: 100, y: 100 }))
-
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="map-container">{children}</div>
   ),
-  TileLayer: () => null,
-  Marker: ({
-    children,
-    eventHandlers,
-  }: {
-    children: React.ReactNode
-    eventHandlers?: { click?: () => void }
-  }) => (
-    <div data-testid="marker" onClick={eventHandlers?.click}>
-      {children}
-    </div>
-  ),
-  Popup: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="popup">{children}</div>
-  ),
-  Tooltip: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip">{children}</div>
-  ),
-  useMap: vi.fn(() => ({
-    flyTo: mockFlyTo,
-    setView: mockSetView,
-    getContainer: mockGetContainer,
-    getSize: mockGetSize,
-    latLngToContainerPoint: vi.fn(() => ({ x: 0, y: 0 })),
-  })),
-  useMapEvent: vi.fn(),
 }))
-
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
 
 vi.mock('react-leaflet-markercluster', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
@@ -69,16 +30,29 @@ vi.mock('react-leaflet-markercluster', () => ({
   ),
 }))
 
+vi.mock('@/components/LocationMap/ResizeController', () => ({ default: () => null }))
+vi.mock('@/components/LocationMap/InitialViewController', () => ({ default: () => null }))
+vi.mock('@/components/LocationMap/SelectionController', () => ({ default: () => null }))
+vi.mock('@/components/LocationMap/LabelCollisionController', () => ({ default: () => null }))
+
+vi.mock('@/components/LocationMap/LocationMarker', () => ({
+  default: ({
+    item,
+    highlighted,
+    onSelect,
+  }: {
+    item: typeof mockLocationWithOffers
+    highlighted: boolean
+    onSelect: (item: typeof mockLocationWithOffers) => void
+  }) => (
+    <div data-testid="marker" data-highlighted={highlighted} onClick={() => onSelect(item)}>
+      <span data-testid="marker-name">{item.business.name}</span>
+      <span data-testid="marker-address">{item.address}</span>
+    </div>
+  ),
+}))
+
 import ResourceMap from '@/components/LocationMap/LocationMap'
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  vi.stubGlobal('ResizeObserver', MockResizeObserver)
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
 
 describe('ResourceMap', () => {
   it('renders the map container', () => {
@@ -87,12 +61,20 @@ describe('ResourceMap', () => {
   })
 
   it('renders a marker for each location', () => {
-    render(<ResourceMap onSelect={vi.fn()} data={[mockLocationWithOffers, mockLocationWithOffers]} />)
+    const a = { ...mockLocationWithOffers, id: 'a' }
+    const b = { ...mockLocationWithOffers, id: 'b' }
+    render(<ResourceMap onSelect={vi.fn()} data={[a, b]} />)
     expect(screen.getAllByTestId('marker')).toHaveLength(2)
   })
 
   it('renders no markers when data is empty', () => {
     render(<ResourceMap onSelect={vi.fn()} data={[]} />)
+    expect(screen.queryByTestId('marker')).not.toBeInTheDocument()
+  })
+
+  it('excludes locations without coordinates', () => {
+    const noCoords = { ...mockLocationWithOffers, id: 'no-coords', latitude: null, longitude: null }
+    render(<ResourceMap onSelect={vi.fn()} data={[noCoords]} />)
     expect(screen.queryByTestId('marker')).not.toBeInTheDocument()
   })
 
@@ -103,62 +85,26 @@ describe('ResourceMap', () => {
     expect(onSelect).toHaveBeenCalledWith(mockLocationWithOffers)
   })
 
-  it('renders the location name in the popup', () => {
+  it('passes the correct item data down to each marker', () => {
     render(<ResourceMap onSelect={vi.fn()} data={[mockLocationWithOffers]} />)
-    expect(screen.getByTestId('popup')).toBeInTheDocument()
+    expect(screen.getByTestId('marker-name')).toHaveTextContent(mockLocationWithOffers.business.name)
+    expect(screen.getByTestId('marker-address')).toHaveTextContent(mockLocationWithOffers.address)
   })
 
-  it('renders location address in the popup', () => {
-    render(<ResourceMap onSelect={vi.fn()} data={[mockLocationWithOffers]} />)
-    expect(screen.getByText(mockLocationWithOffers.address)).toBeInTheDocument()
-  })
-})
+  it('renders exactly one highlighted marker, for the selected item', () => {
+    const a = { ...mockLocationWithOffers, id: 'a' }
+    const b = { ...mockLocationWithOffers, id: 'b' }
+    render(<ResourceMap onSelect={vi.fn()} data={[a, b]} selectedId="b" />)
 
-describe('GeolocationController', () => {
-  it('calls geolocation when available', () => {
-    const mockGetCurrentPosition = vi.fn()
-    vi.stubGlobal('navigator', {
-      geolocation: { getCurrentPosition: mockGetCurrentPosition },
-    })
-
-    render(<ResourceMap onSelect={vi.fn()} data={[]} />)
-
-    expect(mockGetCurrentPosition).toHaveBeenCalled()
+    const markers = screen.getAllByTestId('marker')
+    expect(markers).toHaveLength(2)
+    expect(markers.filter((m) => m.dataset.highlighted === 'true')).toHaveLength(1)
   })
 
-  it('flies to the user location on geolocation success', () => {
-    const mockGetCurrentPosition = vi.fn().mockImplementation((successFn: PositionCallback) => {
-      successFn({ coords: { latitude: 45.5, longitude: -122.7 } } as GeolocationPosition)
-    })
-    vi.stubGlobal('navigator', {
-      geolocation: { getCurrentPosition: mockGetCurrentPosition },
-    })
+  it('renders no highlighted marker when nothing is selected', () => {
+    const a = { ...mockLocationWithOffers, id: 'a' }
+    render(<ResourceMap onSelect={vi.fn()} data={[a]} />)
 
-    render(<ResourceMap onSelect={vi.fn()} data={[]} />)
-
-    expect(mockFlyTo).toHaveBeenCalledWith([45.5, -122.7], 15, { animate: true, duration: 1.5 })
-  })
-
-  it('logs a warning when geolocation fails', () => {
-    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const mockGetCurrentPosition = vi.fn().mockImplementation(
-      (_success: unknown, errorFn: PositionErrorCallback) => {
-        errorFn({ message: 'Permission denied' } as GeolocationPositionError)
-      },
-    )
-    vi.stubGlobal('navigator', {
-      geolocation: { getCurrentPosition: mockGetCurrentPosition },
-    })
-
-    render(<ResourceMap onSelect={vi.fn()} data={[]} />)
-
-    expect(consoleWarn).toHaveBeenCalledWith('Geolocation unavailable:', 'Permission denied')
-    consoleWarn.mockRestore()
-  })
-
-  it('does nothing when geolocation is unavailable', () => {
-    vi.stubGlobal('navigator', { geolocation: undefined })
-
-    expect(() => render(<ResourceMap onSelect={vi.fn()} data={[]} />)).not.toThrow()
+    expect(screen.getAllByTestId('marker').filter((m) => m.dataset.highlighted === 'true')).toHaveLength(0)
   })
 })

@@ -305,6 +305,23 @@ describe('filter chips', () => {
     expect(priceValues).toContain('discount')
   })
 
+  // Regression: removing every filter chip drives the store to all-empty
+  // arrays, which makes toParams() yield no filter keys — same as a bare
+  // URL. The mount-sync effect used to call syncUrl() unconditionally
+  // whenever hasFilterParams(searchParams) was false, so this state (empty
+  // store + bare URL) triggered a replace() every render, and each replace
+  // produced a new "bare" searchParams that still failed hasFilterParams,
+  // looping forever. Asserting zero replace calls on mount pins the fix:
+  // syncUrl must be skipped when it wouldn't change the query string.
+  it('does not call router.replace on mount when filters are already empty and the URL is already bare', () => {
+    useSearchFilters.getState().setFilter('price', [])
+    useSearchFilters.getState().setFilter('foodType', [])
+    useSearchFilters.getState().setFilter('accessType', [])
+    useSearchFilters.getState().setFilter('eligibility', [])
+    render(<ResultsPage />)
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
   it('chips with different keys are stored under separate params', () => {
     render(<ResultsPage />)
     fireEvent.click(screen.getByRole('button', { name: /more/i }))
