@@ -44,12 +44,17 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="popup">{children}</div>
   ),
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip">{children}</div>
+  ),
   useMap: vi.fn(() => ({
     flyTo: mockFlyTo,
     setView: mockSetView,
     getContainer: mockGetContainer,
     getSize: mockGetSize,
+    latLngToContainerPoint: vi.fn(() => ({ x: 0, y: 0 })),
   })),
+  useMapEvent: vi.fn(),
 }))
 
 class MockResizeObserver {
