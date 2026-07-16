@@ -68,6 +68,15 @@ const CITY_BOUNDS = {
 };
 const CITY_POOL = Object.entries(CITY_BOUNDS).flatMap(([city, c]) => Array(c.weight).fill(city));
 
+// A small, dedicated set of dine-in discount spots packed into a tiny
+// downtown Portland (Pearl District) box -- much tighter than the
+// metro-wide CITY_BOUNDS.Portland box above, so several land close enough
+// together on screen to exercise LocationMap's label-collision avoidance,
+// which the metro-wide random businesses rarely trigger (their addresses
+// are too spread out across the whole city).
+const PEARL_DISTRICT_BOUNDS = { state: "OR", area: "503", lat: [45.529, 45.532], lon: [-122.685, -122.678] };
+const PEARL_DISTRICT_TEST_COUNT = 15;
+
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const OPEN_TIMES = ["07:00", "08:00", "09:00", "10:00", "11:00"];
 const CLOSE_TIMES = ["14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
@@ -84,8 +93,8 @@ export function main() {
   const usedNames = new Set();
   const businesses = [];
 
-  for (let i = 0; i < BUSINESS_COUNT; i++) {
-    const venueType = faker.helpers.arrayElement(VENUE_TYPES);
+  function createBusiness(venueTypePool) {
+    const venueType = faker.helpers.arrayElement(venueTypePool);
     let name;
     do {
       name = `${faker.company.name()} ${faker.helpers.arrayElement(NAME_SUFFIXES_BY_VENUE_TYPE[venueType])}`;
@@ -98,7 +107,7 @@ export function main() {
       ? null
       : faker.date.between({ from: createdAt, to: updatedAt });
 
-    businesses.push({
+    return {
       id: faker.string.uuid(),
       name,
       venueType,
@@ -109,16 +118,37 @@ export function main() {
       updatedAt,
       locationIds: [],
       offerIds: [],
-    });
+    };
   }
 
-  const businessRows = businesses.map((b) =>
-    `  (${sql(b.id)}, ${sql(b.name)}, ${sql(faker.lorem.sentences({ min: 1, max: 3 }))}, ` +
-    `${sql(b.venueType)}, ${sql(b.verificationStatus)}, ${sql(b.statusChangedAt?.toISOString())}, ` +
-    `${faker.datatype.boolean(0.15) ? sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10)) : "NULL"}, ` +
-    `${sql(faker.datatype.boolean(0.92))}, ${sql(b.createdBy)}, ${sql(b.createdAt.toISOString())}, ${sql(b.updatedAt.toISOString())}, ` +
-    `${faker.datatype.boolean(0.3) ? sql(faker.lorem.sentence()) : "NULL"})`
-  );
+  for (let i = 0; i < BUSINESS_COUNT; i++) {
+    businesses.push(createBusiness(VENUE_TYPES));
+  }
+
+  // Pearl District test businesses (see PEARL_DISTRICT_BOUNDS above) --
+  // dine-in spots only, since these exist to test map labels for
+  // restaurants/cafes clustered a block or two apart from each other.
+  // Forced fully verified/active (below, at every level) rather than left
+  // to the random verification-status roll, so all 15 reliably show up
+  // together in the same filtered search instead of some being randomly
+  // filtered out as pending/rejected/inactive.
+  const pearlDistrictBusinessIds = new Set();
+  for (let i = 0; i < PEARL_DISTRICT_TEST_COUNT; i++) {
+    const business = createBusiness(["restaurant", "cafe"]);
+    business.verificationStatus = "verified";
+    business.statusChangedAt = faker.date.between({ from: business.createdAt, to: business.updatedAt });
+    pearlDistrictBusinessIds.add(business.id);
+    businesses.push(business);
+  }
+
+  const businessRows = businesses.map((b) => {
+    const isPearlDistrictTest = pearlDistrictBusinessIds.has(b.id);
+    return `  (${sql(b.id)}, ${sql(b.name)}, ${sql(faker.lorem.sentences({ min: 1, max: 3 }))}, ` +
+      `${sql(b.venueType)}, ${sql(b.verificationStatus)}, ${sql(b.statusChangedAt?.toISOString())}, ` +
+      `${isPearlDistrictTest || !faker.datatype.boolean(0.15) ? "NULL" : sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10))}, ` +
+      `${sql(isPearlDistrictTest ? true : faker.datatype.boolean(0.92))}, ${sql(b.createdBy)}, ${sql(b.createdAt.toISOString())}, ${sql(b.updatedAt.toISOString())}, ` +
+      `${faker.datatype.boolean(0.3) ? sql(faker.lorem.sentence()) : "NULL"})`;
+  });
 
   // ── Locations ────────────────────────────────────────────────
   const usedAddresses = new Set();
@@ -126,11 +156,12 @@ export function main() {
   const allLocations = []; // flat list for hours generation
 
   for (const business of businesses) {
-    const locationCount = weightedCount([[1, 0.65], [2, 0.25], [3, 0.10]]);
+    const isPearlDistrictTest = pearlDistrictBusinessIds.has(business.id);
+    const locationCount = isPearlDistrictTest ? 1 : weightedCount([[1, 0.65], [2, 0.25], [3, 0.10]]);
 
     for (let i = 0; i < locationCount; i++) {
-      const city = faker.helpers.arrayElement(CITY_POOL);
-      const bounds = CITY_BOUNDS[city];
+      const city = isPearlDistrictTest ? "Portland" : faker.helpers.arrayElement(CITY_POOL);
+      const bounds = isPearlDistrictTest ? PEARL_DISTRICT_BOUNDS : CITY_BOUNDS[city];
 
       let address, address2, addrKey;
       do {
@@ -148,8 +179,9 @@ export function main() {
       const phone = faker.datatype.boolean(0.7)
         ? `(${bounds.area}) ${faker.string.numeric(3)}-${faker.string.numeric(4)}`
         : null;
-      const foodFormats = faker.helpers.arrayElements(FOOD_FORMATS, { min: 1, max: 3 });
-      const verificationStatus = pickVerificationStatus();
+      const foodFormats = isPearlDistrictTest ? ["dine_in"] : faker.helpers.arrayElements(FOOD_FORMATS, { min: 1, max: 3 });
+      const neighborhood = isPearlDistrictTest ? "Pearl District" : (faker.datatype.boolean(0.5) ? faker.location.county() : null);
+      const verificationStatus = isPearlDistrictTest ? "verified" : pickVerificationStatus();
       const createdAt = faker.date.past({ years: 2, refDate: REFERENCE_DATE });
       const statusChangedAt = verificationStatus === "pending"
         ? null
@@ -159,7 +191,7 @@ export function main() {
 
       locationRows.push(`  (${sql(id)}, ${sql(business.id)}, ${sql(address)}, ${sql(address2)}, ` +
         `${sql(city)}, ${sql(bounds.state)}, ${sql(faker.location.zipCode())}, ` +
-        `${faker.datatype.boolean(0.5) ? sql(faker.location.county()) : "NULL"}, ${lat}, ${lon}, ${sql(phone)}, ` +
+        `${sql(neighborhood)}, ${lat}, ${lon}, ${sql(phone)}, ` +
         `${sqlArray(foodFormats, "public.food_format")}, ${sql(verificationStatus)}, ${sql(statusChangedAt?.toISOString())}, ` +
         `${sql(business.createdBy)}, ${sql(createdAt.toISOString())}, ` +
         `${faker.datatype.boolean(0.4) ? sql(faker.lorem.sentence()) : "NULL"}, ${sql(pickHoursNotes())})`);
@@ -172,15 +204,16 @@ export function main() {
   const allOffers = []; // flat list for hours + verification_events generation
 
   for (const business of businesses) {
-    const offerCount = weightedCount([[1, 0.55], [2, 0.30], [3, 0.15]]);
+    const isPearlDistrictTest = pearlDistrictBusinessIds.has(business.id);
+    const offerCount = isPearlDistrictTest ? 1 : weightedCount([[1, 0.55], [2, 0.30], [3, 0.15]]);
 
     for (let i = 0; i < offerCount; i++) {
-      const eligibility = faker.helpers.arrayElements(ELIGIBILITY_TYPES, { min: 1, max: 2 });
+      const eligibility = isPearlDistrictTest ? ["anyone"] : faker.helpers.arrayElements(ELIGIBILITY_TYPES, { min: 1, max: 2 });
       const isAnyone = eligibility.includes("anyone");
       const proofRequired = isAnyone ? false : faker.datatype.boolean(0.4);
-      const priceType = faker.helpers.arrayElements(PRICE_TYPES, { min: 1, max: 2 });
+      const priceType = isPearlDistrictTest ? ["discount"] : faker.helpers.arrayElements(PRICE_TYPES, { min: 1, max: 2 });
 
-      const isSeasonal = faker.datatype.boolean(0.1);
+      const isSeasonal = isPearlDistrictTest ? false : faker.datatype.boolean(0.1);
       let seasonStart = null, seasonEnd = null;
       if (isSeasonal) {
         const start = faker.date.soon({ days: 60, refDate: REFERENCE_DATE });
@@ -189,7 +222,7 @@ export function main() {
       }
 
       const [createdAt, updatedAt] = pastThenUpdated(REFERENCE_DATE);
-      const verificationStatus = pickVerificationStatus();
+      const verificationStatus = isPearlDistrictTest ? "verified" : pickVerificationStatus();
       const statusChangedAt = verificationStatus === "pending"
         ? null
         : faker.date.between({ from: createdAt, to: updatedAt });
@@ -203,10 +236,10 @@ export function main() {
       offerRows.push(`  (${sql(id)}, ${sql(business.id)}, ${sql(`${faker.helpers.arrayElement(["Free", "Discounted", "Reduced-price"])} ${faker.commerce.productName()}`)}, ` +
         `${sql(faker.lorem.sentence())}, ${sqlArray(priceType, "public.price_type")}, ${sqlArray(eligibility, "public.eligibility_type")}, ` +
         `${sql(proofRequired)}, ${proofRequired ? sql(faker.lorem.sentence()) : "NULL"}, ` +
-        `${faker.datatype.boolean(0.15) ? sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10)) : "NULL"}, ` +
-        `${sql(isSeasonal)}, ${sql(seasonStart)}, ${sql(seasonEnd)}, ${sql(faker.datatype.boolean(0.9))}, ` +
+        `${isPearlDistrictTest || !faker.datatype.boolean(0.15) ? "NULL" : sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10))}, ` +
+        `${sql(isSeasonal)}, ${sql(seasonStart)}, ${sql(seasonEnd)}, ${sql(isPearlDistrictTest ? true : faker.datatype.boolean(0.9))}, ` +
         `${sql(verificationStatus)}, ${sql(statusChangedAt?.toISOString())}, ` +
-        `${faker.datatype.boolean(0.15) ? sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10)) : "NULL"}, ` +
+        `${isPearlDistrictTest || !faker.datatype.boolean(0.15) ? "NULL" : sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10))}, ` +
         `${sql(business.createdBy)}, ${sql(createdAt.toISOString())}, ${sql(updatedAt.toISOString())}, ` +
         `${faker.datatype.boolean(0.3) ? sql(faker.lorem.sentence()) : "NULL"}, ` +
         `${sql(hasOwnHours ? pickHoursNotes() : null)})`);
