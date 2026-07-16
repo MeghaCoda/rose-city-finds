@@ -92,7 +92,9 @@ export const LocationsSchema = z.object({
   phone_number: z.string().nullable().optional(),
   food_formats: z.array(FoodFormatSchema),
   verification_status: VerificationStatusSchema,
+  verification_status_changed_at: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  hours_notes: z.string().nullable().optional(),
 });
 
 export type Location = z.infer<typeof LocationsSchema>;
@@ -116,7 +118,9 @@ export const OffersSchema = z.object({
   season_end_date: z.string().nullable().optional(),
   is_active: z.boolean(),
   verification_status: VerificationStatusSchema,
+  verification_status_changed_at: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  hours_notes: z.string().nullable().optional(),
 });
 
 export type Offer = z.infer<typeof OffersSchema>;
@@ -131,7 +135,6 @@ export const LocationHoursSchema = z.object({
   day: DayOfWeekSchema,
   opens_at: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Must be a valid time e.g. 09:00"),
   closes_at: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Must be a valid time e.g. 17:00"),
-  notes: z.string().nullable().optional(),
   valid_from: z.string().nullable().optional(),
   valid_until: z.string().nullable().optional(),
 });
@@ -144,7 +147,6 @@ export const OfferHoursSchema = z.object({
   day: DayOfWeekSchema,
   opens_at: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Must be a valid time e.g. 09:00"),
   closes_at: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Must be a valid time e.g. 17:00"),
-  notes: z.string().nullable().optional(),
   valid_from: z.string().nullable().optional(),
   valid_until: z.string().nullable().optional(),
 });
@@ -158,7 +160,7 @@ export type OfferHours = z.infer<typeof OfferHoursSchema>;
 // ============================================================
 
 export const LocationWithHoursSchema = LocationsSchema.extend({
-  location_hours: z.array(LocationHoursSchema.omit({ location_id: true })),
+  location_hours: z.array(LocationHoursSchema.omit({ id: true, location_id: true })),
 });
 
 export type LocationWithHours = z.infer<typeof LocationWithHoursSchema>;
@@ -170,14 +172,14 @@ export type LocationWithHours = z.infer<typeof LocationWithHoursSchema>;
 // ============================================================
 
 export const OfferWithHoursSchema = OffersSchema.extend({
-  offer_hours: z.array(OfferHoursSchema.omit({ offer_id: true })),
+  offer_hours: z.array(OfferHoursSchema.omit({ id: true, offer_id: true })),
 });
 
 export type OfferWithHours = z.infer<typeof OfferWithHoursSchema>;
 
 export const LocationWithOffersSchema = LocationsSchema.extend({
   business: BusinessesSchema,
-  location_hours: z.array(LocationHoursSchema.omit({ location_id: true })),
+  location_hours: z.array(LocationHoursSchema.omit({ id: true, location_id: true })),
   offers: z.array(OfferWithHoursSchema),
 });
 

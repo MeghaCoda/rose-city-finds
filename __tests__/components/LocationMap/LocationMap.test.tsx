@@ -4,6 +4,10 @@ import { mockLocationWithOffers } from '@/__mocks__/mockData'
 
 vi.mock('leaflet/dist/leaflet.css', () => ({}))
 
+vi.mock('@/components/ProtomapsLayer', () => ({
+  default: () => null,
+}))
+
 vi.mock('leaflet', () => ({
   default: {
     Icon: {

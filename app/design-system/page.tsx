@@ -11,6 +11,7 @@ import { TabBar } from '@/components/ui/TabBar'
 import { ResultListItem } from '@/components/ui/ResultListItem'
 import { ResultDetailView } from '@/components/ui/ResultDetailView'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { HoursStatus } from '@/components/ui/HoursStatus'
 import { FilterDrawer } from '@/components/ui/FilterDrawer'
 import { StandardButton } from '@/components/ui/StandardButton'
 import { Combobox } from '@/components/ui/combobox'
@@ -238,15 +239,17 @@ export default function DesignSystemPage() {
     phone_number: '(503) 555-0142',
     food_formats: ['pickup', 'grocery'],
     verification_status: 'verified',
+    verification_status_changed_at: '2026-07-01T12:00:00.000Z',
     notes: null,
+    hours_notes: 'Closed on holidays',
     location_hours: [
-      { id: 'h1', day: 'monday', opens_at: '09:00', closes_at: '17:00', notes: null },
-      { id: 'h2', day: 'wednesday', opens_at: '09:00', closes_at: '17:00', notes: null },
-      { id: 'h3', day: 'friday', opens_at: '09:00', closes_at: '13:00', notes: 'Closed on holidays' },
+      { day: 'monday', opens_at: '09:00', closes_at: '17:00' },
+      { day: 'wednesday', opens_at: '09:00', closes_at: '17:00' },
+      { day: 'friday', opens_at: '09:00', closes_at: '13:00' },
     ],
     business: {
       id: 'biz-demo',
-      name: 'NE Portland Food Pantry',
+      name: 'Alberta Arts Food Pantry',
       description: 'Open weekdays. No documentation required.',
       venue_type: 'food_pantry',
       verification_status: 'verified',
@@ -270,10 +273,17 @@ export default function DesignSystemPage() {
         is_active: true,
         verification_status: 'verified',
         notes: null,
+        hours_notes: null,
         offer_hours: [],
       },
     ],
   }
+
+  // HoursStatus demo — a fixed "now" (a Monday) so Open/Closed states are
+  // deterministic regardless of when this page is actually viewed.
+  const HOURS_STATUS_DEMO_NOW = new Date('2026-07-20T12:00:00')
+  const HOURS_STATUS_OPEN_HOURS = [{ day: 'monday' as const, opens_at: '09:00', closes_at: '17:00' }]
+  const HOURS_STATUS_CLOSED_HOURS = [{ day: 'monday' as const, opens_at: '09:00', closes_at: '11:00' }]
 
   const MAP_TABS = [
     { value: 'list', label: 'List', icon: <IconList size={15} stroke={1.5} /> },
@@ -628,6 +638,33 @@ export default function DesignSystemPage() {
           <Item>
             <Label>Eligibility badge</Label>
             <Token>bg-secondary-200 text-secondary-800</Token>
+          </Item>
+        </Row>
+      </Section>
+
+      {/* ── HoursStatus ───────────────────────────────────────────── */}
+      <Section
+        title="HoursStatus"
+        note="Open/closed status line shown above the hours list in ResultDetailView. Dot + label reflect open/closed; the closes/opens time is bold. The verified line only renders when a verifiedAt date is passed."
+      >
+        <Row>
+          <Item>
+            <AppBg>
+              <HoursStatus
+                hours={HOURS_STATUS_OPEN_HOURS}
+                verifiedAt={new Date(HOURS_STATUS_DEMO_NOW.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString()}
+                now={HOURS_STATUS_DEMO_NOW}
+              />
+            </AppBg>
+            <Label>Open, with verified date</Label>
+            <Token>bg-success dot · text-success · font-bold time</Token>
+          </Item>
+          <Item>
+            <AppBg>
+              <HoursStatus hours={HOURS_STATUS_CLOSED_HOURS} now={HOURS_STATUS_DEMO_NOW} />
+            </AppBg>
+            <Label>Closed, no verified date</Label>
+            <Token>bg-error dot · text-error · font-bold time</Token>
           </Item>
         </Row>
       </Section>

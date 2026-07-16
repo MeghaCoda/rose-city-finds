@@ -42,7 +42,7 @@ function formatTime(t: string): string {
   return `${hour}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function HoursList({ hours }: { hours: LocationHour[] }) {
+function ApprovalHoursList({ hours, notes }: { hours: LocationHour[]; notes?: string | null }) {
   if (hours.length === 0) return null;
   const sorted = [...hours].sort(
     (a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)
@@ -50,12 +50,12 @@ function HoursList({ hours }: { hours: LocationHour[] }) {
   return (
     <div className="mt-1 flex flex-col gap-0.5">
       {sorted.map((h) => (
-        <p key={h.id} className="text-muted-foreground text-xs">
+        <p key={h.day} className="text-muted-foreground text-xs">
           <span className="w-8 inline-block font-medium text-foreground">{DAY_LABELS[h.day]}</span>
-          {formatTime(h.opens_at)}–{formatTime(h.closes_at)}
-          {h.notes && <span className="ml-1 text-muted-foreground">({h.notes})</span>}
+          {formatTime(h.opens_at)}-{formatTime(h.closes_at)}
         </p>
       ))}
+      {notes && <p className="text-muted-foreground text-xs">{notes}</p>}
     </div>
   );
 }
@@ -87,7 +87,7 @@ function LocationCard({
         {loc.hours.length > 0 && (
           <div className="mt-1">
             <p className="text-xs font-medium text-foreground">{HOURS_SECTION_LABEL}</p>
-            <HoursList hours={loc.hours} />
+            <ApprovalHoursList hours={loc.hours} notes={loc.hours_notes} />
           </div>
         )}
       </div>

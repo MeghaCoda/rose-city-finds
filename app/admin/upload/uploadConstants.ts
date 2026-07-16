@@ -133,6 +133,7 @@ export const REMOVE_LABEL = 'Remove';
 export const SELECT_DAY_PLACEHOLDER = 'Select day';
 export const OPENS_AT_LABEL = 'Opens at';
 export const CLOSES_AT_LABEL = 'Closes at';
+export const HOURS_NOTES_LABEL = 'Hours Notes';
 
 // Status option labels
 export const STATUS_NOT_SET = 'Not set';

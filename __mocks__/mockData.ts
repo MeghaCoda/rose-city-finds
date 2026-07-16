@@ -45,6 +45,7 @@ const mockOfferRow = {
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
   notes: null,
+  hours_notes: null,
   offer_hours: [
     {
       id: MOCK_OFFER_HOURS_ID,
@@ -52,7 +53,6 @@ const mockOfferRow = {
       day: 'monday' as const,
       opens_at: '08:00:00',
       closes_at: '17:00:00',
-      notes: null,
       valid_from: null,
       valid_until: null,
     },
@@ -78,6 +78,7 @@ export const mockLocationWithOffersRow: LocationWithOffersRow = {
   created_by: null,
   created_at: '2025-01-01T00:00:00Z',
   notes: null,
+  hours_notes: null,
   business: mockBusinessRow,
   location_hours: [
     {
@@ -86,7 +87,6 @@ export const mockLocationWithOffersRow: LocationWithOffersRow = {
       day: 'monday',
       opens_at: '08:00:00',
       closes_at: '17:00:00',
-      notes: null,
       valid_from: null,
       valid_until: null,
     },
@@ -110,6 +110,7 @@ export const mockLocationWithOffers: LocationWithOffers = {
   food_formats: ['pickup'],
   verification_status: 'verified',
   notes: null,
+  hours_notes: null,
   business: {
     id: MOCK_BUSINESS_ID,
     name: 'Mock Business',
@@ -121,11 +122,9 @@ export const mockLocationWithOffers: LocationWithOffers = {
   },
   location_hours: [
     {
-      id: MOCK_LOCATION_HOURS_ID,
       day: 'monday',
       opens_at: '08:00:00',
       closes_at: '17:00:00',
-      notes: null,
       valid_from: null,
       valid_until: null,
     },
@@ -147,13 +146,12 @@ export const mockLocationWithOffers: LocationWithOffers = {
       is_active: true,
       verification_status: 'verified',
       notes: null,
+      hours_notes: null,
       offer_hours: [
         {
-          id: MOCK_OFFER_HOURS_ID,
           day: 'monday',
           opens_at: '08:00:00',
           closes_at: '17:00:00',
-          notes: null,
           valid_from: null,
           valid_until: null,
         },
@@ -180,13 +178,12 @@ export const mockLocationWithHours: LocationWithHours = {
   food_formats: ['pickup'],
   verification_status: 'verified',
   notes: null,
+  hours_notes: null,
   location_hours: [
     {
-      id: MOCK_LOCATION_HOURS_ID,
       day: 'monday',
       opens_at: '08:00:00',
       closes_at: '17:00:00',
-      notes: null,
       valid_from: null,
       valid_until: null,
     },

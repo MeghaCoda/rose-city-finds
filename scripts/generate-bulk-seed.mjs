@@ -12,7 +12,7 @@
 import { faker } from "@faker-js/faker";
 import { readFileSync, writeFileSync } from "node:fs";
 import { sql, sqlArray } from "./lib/seedFormat.mjs";
-import { pickVerificationStatus, pastThenUpdated, weightedCount, buildHoursRows, buildVerificationEvent } from "./lib/seedGenerators.mjs";
+import { pickVerificationStatus, pastThenUpdated, weightedCount, buildHoursRows, pickHoursNotes, buildVerificationEvent } from "./lib/seedGenerators.mjs";
 
 const SEED = 20260630;
 const REFERENCE_DATE = new Date("2026-06-30T00:00:00Z");
@@ -162,7 +162,7 @@ export function main() {
         `${faker.datatype.boolean(0.5) ? sql(faker.location.county()) : "NULL"}, ${lat}, ${lon}, ${sql(phone)}, ` +
         `${sqlArray(foodFormats, "public.food_format")}, ${sql(verificationStatus)}, ${sql(statusChangedAt?.toISOString())}, ` +
         `${sql(business.createdBy)}, ${sql(createdAt.toISOString())}, ` +
-        `${faker.datatype.boolean(0.4) ? sql(faker.lorem.sentence()) : "NULL"})`);
+        `${faker.datatype.boolean(0.4) ? sql(faker.lorem.sentence()) : "NULL"}, ${sql(pickHoursNotes())})`);
     }
   }
 
@@ -196,7 +196,9 @@ export function main() {
 
       const id = faker.string.uuid();
       business.offerIds.push(id);
-      allOffers.push({ id, statusChangedAt });
+      // Most offers rely on their location's hours; only a fraction set their own.
+      const hasOwnHours = faker.datatype.boolean(0.2);
+      allOffers.push({ id, statusChangedAt, hasOwnHours });
 
       offerRows.push(`  (${sql(id)}, ${sql(business.id)}, ${sql(`${faker.helpers.arrayElement(["Free", "Discounted", "Reduced-price"])} ${faker.commerce.productName()}`)}, ` +
         `${sql(faker.lorem.sentence())}, ${sqlArray(priceType, "public.price_type")}, ${sqlArray(eligibility, "public.eligibility_type")}, ` +
@@ -206,7 +208,8 @@ export function main() {
         `${sql(verificationStatus)}, ${sql(statusChangedAt?.toISOString())}, ` +
         `${faker.datatype.boolean(0.15) ? sql(faker.date.future({ refDate: REFERENCE_DATE }).toISOString().slice(0, 10)) : "NULL"}, ` +
         `${sql(business.createdBy)}, ${sql(createdAt.toISOString())}, ${sql(updatedAt.toISOString())}, ` +
-        `${faker.datatype.boolean(0.3) ? sql(faker.lorem.sentence()) : "NULL"})`);
+        `${faker.datatype.boolean(0.3) ? sql(faker.lorem.sentence()) : "NULL"}, ` +
+        `${sql(hasOwnHours ? pickHoursNotes() : null)})`);
 
       // Link this offer to a subset of its business's locations (all of them, most of the time).
       const linkedLocations = faker.datatype.boolean(0.7)
@@ -220,9 +223,8 @@ export function main() {
 
   // ── Location & Offer Hours ──────────────────────────────────
   const locationHoursRows = allLocations.flatMap((l) => buildHoursRows(l.id, HOURS_CONFIG));
-  // Most offers rely on their location's hours; only a fraction set their own.
   const offerHoursRows = allOffers
-    .filter(() => faker.datatype.boolean(0.2))
+    .filter((o) => o.hasOwnHours)
     .flatMap((o) => buildHoursRows(o.id, HOURS_CONFIG));
 
   // ── Verification Events ─────────────────────────────────────
@@ -257,7 +259,7 @@ ${businessRows.join(",\n")};
 INSERT INTO public.locations (
   id, business_id, address, address2, city, state, zip_code,
   neighborhood, latitude, longitude, phone_number, food_formats,
-  verification_status, verification_status_changed_at, created_by, created_at, notes
+  verification_status, verification_status_changed_at, created_by, created_at, notes, hours_notes
 ) VALUES
 ${locationRows.join(",\n")};
 
@@ -265,7 +267,7 @@ INSERT INTO public.offers (
   id, business_id, name, description, price_type, eligibility,
   proof_required, proof_desc, expires_at, is_seasonal, season_start_date, season_end_date,
   is_active, verification_status, verification_status_changed_at, verification_expires_at,
-  created_by, created_at, updated_at, notes
+  created_by, created_at, updated_at, notes, hours_notes
 ) VALUES
 ${offerRows.join(",\n")};
 
@@ -273,12 +275,12 @@ INSERT INTO public.offer_locations (offer_id, location_id) VALUES
 ${offerLocationRows.join(",\n")};
 
 INSERT INTO public.location_hours (
-  location_id, day, opens_at, closes_at, notes, valid_from, valid_until
+  location_id, day, opens_at, closes_at, valid_from, valid_until
 ) VALUES
 ${locationHoursRows.join(",\n")};
 
 INSERT INTO public.offer_hours (
-  offer_id, day, opens_at, closes_at, notes, valid_from, valid_until
+  offer_id, day, opens_at, closes_at, valid_from, valid_until
 ) VALUES
 ${offerHoursRows.join(",\n")};
 

@@ -102,7 +102,6 @@ export type LocationHour = {
   day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
   opens_at: string;
   closes_at: string;
-  notes: string | null;
   valid_from: string | null;
   valid_until: string | null;
 };
@@ -119,6 +118,7 @@ export type OfferLocation = {
   longitude: number | null;
   phone_number: string | null;
   notes: string | null;
+  hours_notes: string | null;
   verification_status: string | null;
   hours: LocationHour[];
 };
@@ -481,11 +481,11 @@ export type OfferEntryInput = {
         neighborhood?: string;
         phone_number?: string;
         notes?: string;
+        hours_notes?: string;
         hours?: Array<{
           day: string;
           opens_at: string;
           closes_at: string;
-          notes?: string;
         }>;
       }
     | { mode: 'none' };
@@ -669,6 +669,7 @@ export async function submitOfferEntry(
         neighborhood: location.neighborhood ?? null,
         phone_number: location.phone_number ?? null,
         notes: location.notes ?? null,
+        hours_notes: location.hours_notes ?? null,
         latitude: geocoded!.lat,
         longitude: geocoded!.lng,
         verification_status: 'pending',
@@ -691,7 +692,6 @@ export async function submitOfferEntry(
           day: h.day,
           opens_at: h.opens_at,
           closes_at: h.closes_at,
-          notes: h.notes ?? null,
         }))
       );
       if (hoursError) {

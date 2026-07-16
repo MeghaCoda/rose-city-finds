@@ -40,6 +40,7 @@ import {
   PHONE_LABEL,
   LOCATION_NOTES_LABEL,
   HOURS_LEGEND,
+  HOURS_NOTES_LABEL,
   ADD_HOURS_LABEL,
   REMOVE_LABEL,
   SELECT_DAY_PLACEHOLDER,
@@ -73,12 +74,12 @@ import {
   VALIDATION_ERRORS_HEADER,
 } from './uploadConstants';
 
-type HourEntry = { day: string; opens_at: string; closes_at: string; notes: string };
+type HourEntry = { day: string; opens_at: string; closes_at: string };
 
 type NewBusinessFieldKey = 'name' | 'description' | 'venue_type' | 'notes';
 type NewLocationFieldKey =
   | 'address' | 'address2' | 'city' | 'state' | 'zip_code'
-  | 'neighborhood' | 'phone_number' | 'notes';
+  | 'neighborhood' | 'phone_number' | 'notes' | 'hours_notes';
 type NewOfferFieldKey = 'name' | 'description' | 'offer_source' | 'expires_at' | 'is_active' | 'notes';
 
 type BusinessState =
@@ -99,6 +100,7 @@ type LocationState =
       neighborhood: string;
       phone_number: string;
       notes: string;
+      hours_notes: string;
       hours: HourEntry[];
     }
   | { mode: 'none' };
@@ -130,7 +132,7 @@ function newLocationDefaults(): LocationState {
   return {
     mode: 'new',
     address: '', address2: '', city: '', state: '', zip_code: '',
-    neighborhood: '', phone_number: '', notes: '', hours: [],
+    neighborhood: '', phone_number: '', notes: '', hours_notes: '', hours: [],
   };
 }
 
@@ -207,13 +209,13 @@ function toEntryInput(
           neighborhood: location.neighborhood.trim() || undefined,
           phone_number: location.phone_number.trim() || undefined,
           notes: location.notes.trim() || undefined,
+          hours_notes: location.hours_notes.trim() || undefined,
           hours:
             location.hours.length > 0
               ? location.hours.map((h) => ({
                   day: h.day,
                   opens_at: h.opens_at,
                   closes_at: h.closes_at,
-                  notes: h.notes.trim() || undefined,
                 }))
               : undefined,
         };
@@ -332,7 +334,7 @@ export function OfferEntryForm({ adminUserId }: { adminUserId: string }) {
 
   const addHour = () =>
     setLocation((l) =>
-      l.mode === 'new' ? { ...l, hours: [...l.hours, { day: '', opens_at: '', closes_at: '', notes: '' }] } : l
+      l.mode === 'new' ? { ...l, hours: [...l.hours, { day: '', opens_at: '', closes_at: '' }] } : l
     );
 
   const removeHour = (i: number) =>
@@ -550,16 +552,7 @@ export function OfferEntryForm({ adminUserId }: { adminUserId: string }) {
                         <Input id={`hour-close-${i}`} type="time" value={h.closes_at} onChange={setHourField(i, 'closes_at')} />
                       </div>
                     </div>
-                    <div className="flex items-end gap-3">
-                      <div className="flex flex-col gap-1.5 flex-1">
-                        <Label htmlFor={`hour-notes-${i}`}>{NOTES_LABEL}</Label>
-                        <Input
-                          id={`hour-notes-${i}`}
-                          value={h.notes}
-                          onChange={setHourField(i, 'notes')}
-                          placeholder="e.g. Closed holidays"
-                        />
-                      </div>
+                    <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={() => removeHour(i)}
@@ -570,6 +563,17 @@ export function OfferEntryForm({ adminUserId }: { adminUserId: string }) {
                     </div>
                   </div>
                 ))}
+                {location.hours.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="loc-hours-notes">{HOURS_NOTES_LABEL}</Label>
+                    <Input
+                      id="loc-hours-notes"
+                      value={location.hours_notes}
+                      onChange={setLocationField('hours_notes')}
+                      placeholder="e.g. Closed holidays"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

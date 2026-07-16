@@ -1,15 +1,16 @@
 "use client";
 import {
     MapContainer,
-    TileLayer,
     Marker,
     Popup,
     useMap
 } from "react-leaflet"
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import 'leaflet/dist/leaflet.css';
+import 'react-leaflet-markercluster/styles';
 import L from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import ProtomapsLayer from "@/components/ProtomapsLayer";
 
 export interface Location {
   id: string;
@@ -17,6 +18,7 @@ export interface Location {
   address2?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  business: { name: string };
 }
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -26,25 +28,48 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-function pinSvg(fill: string) {
-  return `<svg width="24" height="36" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.37 0 0 5.37 0 12c0 6.63 12 24 12 24S24 18.63 24 12C24 5.37 18.63 0 12 0z" fill="${fill}"/><circle cx="12" cy="11" r="4" fill="white"/></svg>`
+// viewBox stays fixed at the pin's original 24x36 art; only the rendered
+// width/height below scale it, so the path/circle coordinates never need
+// to change between the normal and highlighted sizes.
+function pinSvg(fill: string, width: number, height: number) {
+  return `<svg width="${width}" height="${height}" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.37 0 0 5.37 0 12c0 6.63 12 24 12 24S24 18.63 24 12C24 5.37 18.63 0 12 0z" fill="${fill}"/><circle cx="12" cy="11" r="4" fill="white"/></svg>`
 }
 
-const normalIcon = L.divIcon({
-  className: '',
-  iconSize: [24, 36],
-  iconAnchor: [12, 36],
-  popupAnchor: [0, -38],
-  html: pinSvg('#2563EB'),
-})
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-const highlightIcon = L.divIcon({
-  className: '',
-  iconSize: [28, 42],
-  iconAnchor: [14, 42],
-  popupAnchor: [0, -44],
-  html: `<svg width="28" height="42" viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.27 0 0 6.27 0 14c0 7.73 14 28 14 28S28 21.73 28 14C28 6.27 21.73 0 14 0z" fill="#E8612A"/><circle cx="14" cy="13" r="5" fill="white"/></svg>`,
-})
+// Half the original pin dimensions (24x36 / 28x42). The highlighted pin is
+// 50% bigger than the normal one.
+const PIN_WIDTH = 12;
+const PIN_HEIGHT = 18;
+const HIGHLIGHT_PIN_WIDTH = PIN_WIDTH * 1.5;
+const HIGHLIGHT_PIN_HEIGHT = PIN_HEIGHT * 1.5;
+
+// The name label lives outside the pin's own box (right: 100%), so it
+// doesn't affect iconAnchor/iconSize, which stay pinned to the marker glyph.
+function createLocationIcon(name: string, highlighted: boolean) {
+  const width = highlighted ? HIGHLIGHT_PIN_WIDTH : PIN_WIDTH;
+  const height = highlighted ? HIGHLIGHT_PIN_HEIGHT : PIN_HEIGHT;
+  const fill = highlighted ? '#E8612A' : '#2563EB';
+  const label = escapeHtml(name);
+
+  return L.divIcon({
+    className: '',
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    popupAnchor: [0, -(height + 2)],
+    html: `<div style="position:relative;width:${width}px;height:${height}px;">` +
+      `<span style="position:absolute;top:50%;right:calc(100% + 4px);transform:translateY(-50%);white-space:nowrap;font:600 11px system-ui, sans-serif;color:#1f2937;text-shadow:-1px -1px 1px #fff,1px -1px 1px #fff,-1px 1px 1px #fff,1px 1px 1px #fff,0 -1px 1px #fff,0 1px 1px #fff,-1px 0 1px #fff,1px 0 1px #fff;">${label}</span>` +
+      pinSvg(fill, width, height) +
+      `</div>`,
+  });
+}
 
 const FALLBACK_CENTER: [number, number] = [45.523, -122.6765];
 const FALLBACK_ZOOM = 13;
@@ -133,15 +158,40 @@ function hasCoordinates<T extends Location>(item: T): item is T & { latitude: nu
   return Number.isFinite(item.latitude) && Number.isFinite(item.longitude);
 }
 
-function SelectionController<T extends Location>({ selectedId, data }: { selectedId?: string | null; data: T[] }) {
+// leaflet.markercluster augments L at runtime (side-effect import above) but
+// ships no type declarations, so the group instance is typed structurally
+// here rather than as L.MarkerClusterGroup.
+interface MarkerClusterGroupInstance extends L.LayerGroup {
+  zoomToShowLayer(layer: L.Layer, callback?: () => void): void;
+}
+
+interface SelectionControllerProps<T extends Location> {
+  selectedId?: string | null;
+  data: T[];
+  markerRefs: React.RefObject<Map<string, L.Marker>>;
+  clusterGroupRef: React.RefObject<MarkerClusterGroupInstance | null>;
+}
+
+function SelectionController<T extends Location>({ selectedId, data, markerRefs, clusterGroupRef }: SelectionControllerProps<T>) {
   const map = useMap();
 
   useEffect(() => {
     if (!selectedId) return;
     const item = data.find((d) => d.id === selectedId);
     if (!item || !hasCoordinates(item)) return;
+    const target = L.latLng(item.latitude, item.longitude);
+    const marker = markerRefs.current.get(selectedId);
+    const clusterGroup = clusterGroupRef.current;
     try {
-      const target = L.latLng(item.latitude, item.longitude);
+      // A selected marker can be absorbed into a cluster bubble at the
+      // current zoom, in which case just panning/flying to it leaves the
+      // highlighted pin invisible. zoomToShowLayer is leaflet.markercluster's
+      // own API for this: it pans, zooms, and spiderfies as needed until the
+      // specific marker is actually on screen.
+      if (marker && clusterGroup) {
+        clusterGroup.zoomToShowLayer(marker);
+        return;
+      }
       const distance = map.getCenter().distanceTo(target);
       const duration = distance > LONG_FLIGHT_DISTANCE_METERS ? LONG_FLY_DURATION : DEFAULT_FLY_DURATION;
       flyToSafe(map, target, map.getZoom(), { animate: true, duration });
@@ -155,22 +205,26 @@ function SelectionController<T extends Location>({ selectedId, data }: { selecte
 }
 
 function ResourceMap<T extends Location>({ onSelect, data, selectedId }: ResourceMapProps<T>) {
+    const markerRefs = useRef<Map<string, L.Marker>>(new Map());
+    const clusterGroupRef = useRef<MarkerClusterGroupInstance | null>(null);
+
     return (
       <div className="h-full w-full min-w-0">
-        <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+        <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} maxZoom={15} style={{ height: '100%', width: '100%' }}>
+          <ProtomapsLayer theme="light" />
           <ResizeController />
           <GeolocationController />
-          <SelectionController selectedId={selectedId} data={data} />
-          <MarkerClusterGroup>
+          <SelectionController selectedId={selectedId} data={data} markerRefs={markerRefs} clusterGroupRef={clusterGroupRef} />
+          <MarkerClusterGroup ref={clusterGroupRef}>
             {data.filter(hasCoordinates).map(item => (
                 <Marker
                   key={item.id}
+                  ref={(marker) => {
+                    if (marker) markerRefs.current.set(item.id, marker);
+                    else markerRefs.current.delete(item.id);
+                  }}
                   position={[item.latitude, item.longitude]}
-                  icon={selectedId === item.id ? highlightIcon : normalIcon}
+                  icon={createLocationIcon(item.business.name, selectedId === item.id)}
                   eventHandlers={{
                     click: () => {
                       onSelect(item);
