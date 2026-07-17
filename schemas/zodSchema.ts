@@ -211,14 +211,18 @@ export function safeParsWithDebug<T>(
     result.error.issues.forEach((issue) => {
       const index = issue.path[0];
       const field = issue.path[1];
-      const failedRecord = Array.isArray(data) ? (data as any[])[index as number] : data;
+      const failedRecord = Array.isArray(data) ? (data as unknown[])[index as number] : data;
+      const recordId =
+        failedRecord && typeof failedRecord === "object" && "id" in failedRecord
+          ? failedRecord.id
+          : null;
 
       console.error({
         message: issue.message,
         field,
         index,
         failedRecord,
-        recordId: failedRecord?.id ?? null,
+        recordId,
       });
     });
     return null;

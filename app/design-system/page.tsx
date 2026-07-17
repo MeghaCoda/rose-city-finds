@@ -389,7 +389,7 @@ export default function DesignSystemPage() {
       {/* ── FilterChip ────────────────────────────────────────────── */}
       <Section
         title="FilterChip"
-        note="Pill filter toggle with decorative checkbox square. compact variant omits the checkbox and reduces padding — used in the results bar."
+        note="Pill filter toggle with decorative checkbox square. compact variant omits the checkbox and reduces padding — used in the results bar. light variant matches StandardButton's primary/light color scheme."
       >
         <Row>
           <Item>
@@ -417,6 +417,11 @@ export default function DesignSystemPage() {
           <Item>
             <FilterChip label="Free" selected={true} onClick={() => {}} compact />
             <Label>Compact selected</Label>
+          </Item>
+          <Item>
+            <FilterChip label="Free" selected={true} onClick={() => {}} compact light className="self-start" />
+            <Label>Compact selected (light)</Label>
+            <Token>bg-primary-200 border-primary-800 text-primary-800</Token>
           </Item>
         </Row>
         <p className="text-xs font-semibold tracking-widest uppercase text-text-muted mb-2">Interactive demo</p>

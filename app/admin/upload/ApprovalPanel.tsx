@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   getPendingResources,
@@ -236,18 +237,13 @@ function ResourceCard({
 }
 
 export function ApprovalPanel({ onBack }: { onBack: () => void }) {
-  const [items, setItems] = useState<PendingResource[] | null>(null);
+  const queryClient = useQueryClient();
+  const { data: items = null } = useQuery({
+    queryKey: ['pendingResources'],
+    queryFn: getPendingResources,
+  });
   const [error, setError] = useState<string | null>(null);
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
-
-  const load = useCallback(async () => {
-    setItems(null);
-    setError(null);
-    const data = await getPendingResources();
-    setItems(data);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const addLoading = (id: string) =>
     setLoadingIds((prev) => new Set([...prev, id]));
@@ -261,7 +257,9 @@ export function ApprovalPanel({ onBack }: { onBack: () => void }) {
     if (res.error) {
       setError(res.error);
     } else {
-      setItems((prev) => prev?.filter((item) => item.id !== businessId) ?? null);
+      queryClient.setQueryData<PendingResource[]>(['pendingResources'], (prev) =>
+        prev?.filter((item) => item.id !== businessId) ?? prev
+      );
     }
   };
 
@@ -276,7 +274,7 @@ export function ApprovalPanel({ onBack }: { onBack: () => void }) {
     if (res.error) {
       setError(res.error);
     } else {
-      setItems((prev) =>
+      queryClient.setQueryData<PendingResource[]>(['pendingResources'], (prev) =>
         prev?.map((item) =>
           item.id === resourceId
             ? {
@@ -286,7 +284,7 @@ export function ApprovalPanel({ onBack }: { onBack: () => void }) {
                 ),
               }
             : item
-        ) ?? null
+        ) ?? prev
       );
     }
   };

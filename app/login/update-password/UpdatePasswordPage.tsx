@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,13 +24,32 @@ import {
   UPDATE_PASSWORD_LABEL,
 } from './constants';
 
+type TokenState =
+  | { status: 'loading' }
+  | { status: 'invalid'; error: string }
+  | { status: 'ready'; accessToken: string; refreshToken: string | null }
+  | { status: 'success' };
+
+type TokenAction =
+  | { type: 'invalid'; error: string }
+  | { type: 'ready'; accessToken: string; refreshToken: string | null }
+  | { type: 'success' };
+
+function tokenReducer(_state: TokenState, action: TokenAction): TokenState {
+  switch (action.type) {
+    case 'invalid':
+      return { status: 'invalid', error: action.error };
+    case 'ready':
+      return { status: 'ready', accessToken: action.accessToken, refreshToken: action.refreshToken };
+    case 'success':
+      return { status: 'success' };
+  }
+}
+
 export function UpdatePasswordPage() {
   const router = useRouter();
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [tokenError, setTokenError] = useState('');
+  const [tokenState, dispatch] = useReducer(tokenReducer, { status: 'loading' });
   const [formError, setFormError] = useState('');
-  const [status, setStatus] = useState<'loading' | 'ready' | 'success' | 'invalid'>('loading');
   const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
@@ -38,11 +57,10 @@ export function UpdatePasswordPage() {
     const errorCode = params.get('error_code');
 
     if (errorCode) {
-      setTokenError(
-        params.get('error_description')?.replace(/\+/g, ' ') ??
-          INVALID_LINK_DEFAULT_ERROR,
-      );
-      setStatus('invalid');
+      dispatch({
+        type: 'invalid',
+        error: params.get('error_description')?.replace(/\+/g, ' ') ?? INVALID_LINK_DEFAULT_ERROR,
+      });
       return;
     }
 
@@ -50,18 +68,16 @@ export function UpdatePasswordPage() {
     const token = params.get('access_token');
 
     if (type !== 'recovery' || !token) {
-      setTokenError(INVALID_RECOVERY_LINK_ERROR);
-      setStatus('invalid');
+      dispatch({ type: 'invalid', error: INVALID_RECOVERY_LINK_ERROR });
       return;
     }
 
-    setAccessToken(token);
-    setRefreshToken(params.get('refresh_token'));
-    setStatus('ready');
+    dispatch({ type: 'ready', accessToken: token, refreshToken: params.get('refresh_token') });
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (tokenState.status !== 'ready') return;
     setFormError('');
     setIsPending(true);
 
@@ -78,11 +94,15 @@ export function UpdatePasswordPage() {
     const res = await fetch(API_ROUTES.AUTH_UPDATE_PASSWORD, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken, password }),
+      body: JSON.stringify({
+        access_token: tokenState.accessToken,
+        refresh_token: tokenState.refreshToken,
+        password,
+      }),
     });
 
     if (res.ok) {
-      setStatus('success');
+      dispatch({ type: 'success' });
     } else {
       const data = await res.json();
       setFormError(data.error ?? UPDATE_PASSWORD_DEFAULT_ERROR);
@@ -90,11 +110,11 @@ export function UpdatePasswordPage() {
     setIsPending(false);
   }
 
-  if (status === 'loading') {
+  if (tokenState.status === 'loading') {
     return null;
   }
 
-  if (status === 'invalid') {
+  if (tokenState.status === 'invalid') {
     return (
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm max-w-sm w-full">
         <h2 className="text-lg font-semibold mb-1">{LINK_INVALID_TITLE}</h2>
@@ -102,7 +122,7 @@ export function UpdatePasswordPage() {
           role="alert"
           className="mt-4 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive"
         >
-          {tokenError}
+          {tokenState.error}
         </div>
         <button
           onClick={() => router.push(ROUTES.LOGIN)}
@@ -114,7 +134,7 @@ export function UpdatePasswordPage() {
     );
   }
 
-  if (status === 'success') {
+  if (tokenState.status === 'success') {
     return (
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm max-w-sm w-full">
         <h2 className="text-lg font-semibold mb-1">{PASSWORD_UPDATED_TITLE}</h2>
