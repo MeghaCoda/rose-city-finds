@@ -139,7 +139,7 @@ export function ResultsPage() {
             selected
             onClick={() => toggleChip(chip.key, chip.value)}
             compact
-            selectedClassName="bg-surface-1 border-primary text-text-primary"
+            light
           />
         ))}
         <FilterChip

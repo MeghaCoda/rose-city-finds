@@ -7,7 +7,7 @@ import "./LocationMap.css";
 import L from "leaflet";
 import { useRef } from "react";
 import ProtomapsLayer from "@/components/ProtomapsLayer";
-import { FALLBACK_CENTER, FALLBACK_ZOOM } from "./constants";
+import { DISABLE_CLUSTERING_AT_ZOOM, FALLBACK_CENTER, FALLBACK_ZOOM, MAX_ZOOM } from "./constants";
 import InitialViewController from "./InitialViewController";
 import LabelCollisionController from "./LabelCollisionController";
 import LocationMarker from "./LocationMarker";
@@ -35,7 +35,7 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
 
     return (
       <div className="h-full w-full min-w-0">
-        <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} maxZoom={15} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} maxZoom={MAX_ZOOM} style={{ height: '100%', width: '100%' }}>
           <ProtomapsLayer theme="light" />
           <ResizeController />
           <InitialViewController data={data} />
@@ -48,7 +48,7 @@ function ResourceMap<T extends Location>({ onSelect, data, selectedId }: Resourc
               "is this marker currently clustered?" -- a stale read that
               left some labels overlapping a cluster bubble. Disabling it
               makes cluster membership changes land synchronously. */}
-          <MarkerClusterGroup animate={false}>
+          <MarkerClusterGroup animate={false} disableClusteringAtZoom={DISABLE_CLUSTERING_AT_ZOOM}>
             {clusteredItems.map(item => (
               <LocationMarker key={item.id} item={item} highlighted={false} onSelect={onSelect} markerRefs={markerRefs} tooltipRefs={tooltipRefs} />
             ))}
