@@ -357,6 +357,25 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
+      {/* ── Links ─────────────────────────────────────────────────── */}
+      <Section
+        title="Links"
+        note="Plain <a> tags are bold and --color-primary by default, with an underline on hover. Add the link-light class for a lighter, lower-emphasis tint of primary."
+      >
+        <Row>
+          <Item>
+            <a href="#">Primary link</a>
+            <Label>Default</Label>
+            <Token>text-primary · font-bold · hover:underline</Token>
+          </Item>
+          <Item>
+            <a href="#" className="link-light">Light link</a>
+            <Label>Light</Label>
+            <Token>link-light · text-primary-400 · font-bold</Token>
+          </Item>
+        </Row>
+      </Section>
+
       {/* ── StandardButton ────────────────────────────────────────── */}
       <Section
         title="StandardButton"

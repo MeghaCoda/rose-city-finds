@@ -1,13 +1,7 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { SignOutButton } from './SignOutButton';
-import { StandardButton } from '../ui/StandardButton';
 import Image from 'next/image';
 
-export async function Header() {
-  const cookieStore = await cookies();
-  const isSignedIn = !!cookieStore.get('auth_token')?.value;
-
+export function Header() {
   return (
     <header className="flex items-center justify-between px-6 py-4 bg-primary">
       <div>
@@ -26,14 +20,12 @@ export async function Header() {
         </Link>
       </div>
       <nav className="shrink-0 ml-4">
-        {isSignedIn ? (
-          <SignOutButton />
-        ) : (
-          <Link
-            href="/login">
-            <StandardButton color="primary" variant="light">Sign in</StandardButton>
-          </Link>
-        )}
+        <Link
+          href="/about"
+          className="text-sm font-semibold text-[#F0F2F8] hover:text-secondary-300 transition-colors"
+        >
+          About
+        </Link>
       </nav>
     </header>
   );
