@@ -42,6 +42,7 @@ describe('DesignSystemPage', () => {
     for (const title of [
       'Color tokens',
       'Typography',
+      'Links',
       'StandardButton',
       'FilterChip',
       'FilterSection',

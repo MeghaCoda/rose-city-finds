@@ -194,6 +194,9 @@
   h3 {
     @apply font-subheader;
   }
+  a {
+    @apply text-primary font-bold underline-offset-2 hover:underline;
+  }
   html,
   body {
     height: 100%;
@@ -202,5 +205,13 @@
   body {
     display: flex;
     flex-direction: column;
+  }
+}
+
+@layer components {
+  /* Lighter secondary link style — e.g. lower-emphasis links or links on
+     backgrounds where full-strength --color-primary lacks contrast. */
+  .link-light {
+    @apply text-primary-400 underline-offset-2 hover:underline;
   }
 }
