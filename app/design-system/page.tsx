@@ -65,6 +65,7 @@ function useToggleSet(initial: string[] = []) {
   function toggle(v: string) {
     setSet((s) => {
       const next = new Set(s)
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       next.has(v) ? next.delete(v) : next.add(v)
       return next
     })

@@ -3,13 +3,13 @@ import { cookies } from 'next/headers';
 import { createSupabaseClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
-async function makeStandardOrDemoClient() {
+async function makeStandardOrProdClient() {
   if (process.env.VERCEL_ENV === 'production') {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
     return createClient<Database>(
-      process.env.NEXT_PUBLIC_DEMO_DB_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_DEMO_DB_SUPABASE_PUBLISHABLE_KEY!,
+      process.env.NEXT_PUBLIC_PROD_DB_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_PROD_DB_SUPABASE_PUBLISHABLE_KEY!,
       token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : undefined,
     );
   }
@@ -38,7 +38,7 @@ export type LocationWithOffersRow = LocationRow & {
 };
 
 export async function fetchLocationsWithOffers(): Promise<LocationWithOffersRow[]> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardProdClient();
   const { data, error } = await supabase
     .from('locations')
     .select('*, business:businesses(*), location_hours(*), offer_locations(offers(*, offer_hours(*)))');
@@ -47,7 +47,7 @@ export async function fetchLocationsWithOffers(): Promise<LocationWithOffersRow[
 }
 
 export async function fetchLocationById(id: string): Promise<LocationRow & { location_hours: LocationHoursRow[] }> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { data, error } = await supabase
     .from('locations')
     .select('*, location_hours(*)')
@@ -58,7 +58,7 @@ export async function fetchLocationById(id: string): Promise<LocationRow & { loc
 }
 
 export async function insertLocation(row: Omit<LocationInsertRow, 'id' | 'created_at'>): Promise<{ id: string }> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { data, error } = await supabase
     .from('locations')
     .insert(row)
@@ -69,7 +69,7 @@ export async function insertLocation(row: Omit<LocationInsertRow, 'id' | 'create
 }
 
 export async function insertLocationHours(rows: Omit<LocationHoursInsertRow, 'id'>[]): Promise<void> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { error } = await supabase.from('location_hours').insert(rows);
   if (error) throw new Error(error.message);
 }
@@ -78,7 +78,7 @@ export async function updateLocationRow(
   id: string,
   row: Partial<Omit<LocationInsertRow, 'id' | 'created_at'>>
 ): Promise<void> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { error } = await supabase
     .from('locations')
     .update(row)
@@ -87,7 +87,7 @@ export async function updateLocationRow(
 }
 
 export async function deleteLocationHours(locationId: string): Promise<void> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { error } = await supabase
     .from('location_hours')
     .delete()
@@ -100,7 +100,7 @@ export async function deleteLocationHours(locationId: string): Promise<void> {
 // offers (the offers themselves, and any other locations they're linked
 // to, are untouched).
 export async function deleteOfferLocationsForLocation(locationId: string): Promise<void> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { error } = await supabase
     .from('offer_locations')
     .delete()
@@ -109,7 +109,7 @@ export async function deleteOfferLocationsForLocation(locationId: string): Promi
 }
 
 export async function deleteLocationRow(id: string): Promise<void> {
-  const supabase = await makeStandardOrDemoClient();
+  const supabase = await makeStandardOrProdClient();
   const { error } = await supabase
     .from('locations')
     .delete()
