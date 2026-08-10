@@ -1,0 +1,128 @@
+name: Weekly Live-to-Prod Data Sync
+
+# v1-ONLY WORKFLOW. Meghan is the sole contributor to live right now (she
+# creates and verifies every row), and this sync exists purely so that
+# testing the db schema/integrity on live doesn't require hand-copying data
+# into prod for the demo to look current. It does a full truncate-and-restore
+# of prod's public schema from live every 7 days.
+#
+# WHY public.users GETS SYNCED DESPITE THE "NO USER ACCOUNTS" RULE:
+# auth.users / auth.identities are NEVER touched by this workflow (the
+# --schema=public flag below excludes them entirely) -- those are real
+# account/credential tables and syncing them between projects would be a
+# security problem, not just a data one. But public.users.id has a hard
+# FK to auth.users.id (ON DELETE CASCADE), and businesses/locations/offers/
+# verification_events all reference public.users via created_by/verified_by
+# for attribution. For that FK to resolve after restoring live's
+# public.users row into prod, prod's auth.users must already contain a row
+# with the exact SAME UUID as live's contributor account. That row was
+# created ONCE, by hand, directly via the Supabase SQL editor on prod (not
+# by any workflow) -- it is a permanent, static reconciliation, not
+# something this job manages.
+#
+# THIS BREAKS THE MOMENT THERE IS MORE THAN ONE CONTRIBUTOR. It only works
+# in v1 because every created_by/verified_by value in live resolves to that
+# one manually-reconciled UUID. As soon as a second real contributor exists
+# in live, their content's created_by/verified_by will point to a UUID that
+# doesn't exist in prod's auth.users -- with --disable-triggers (needed
+# below so the restore doesn't fail on FK/dependency ordering), that won't
+# error, it will silently leave dangling references in prod. Do not extend
+# this workflow to "just add more reconciled UUIDs" once that happens.
+#
+# PLANNED v2 REPLACEMENT: the direction reverses. Live/sandbox gets seeded
+# FROM a copy of prod (not the other way around) as a safe place to tinker,
+# and only schema migrations -- never data -- get pushed from live to prod.
+# Delete/replace this file when that transition happens; don't patch it
+# further to handle multiple contributors.
+
+on:
+  schedule:
+    - cron: '0 10 * * 0' # Sunday 2 AM PST (UTC-8); fires 3 AM in summer (PDT)
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      # Safety net: this job is about to truncate prod's public schema. If
+      # anything below goes wrong, this artifact is how prod gets restored.
+      - name: Back up prod before touching it
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_PROD_DB_PASSWORD }}
+        run: |
+          pg_dump \
+            --host=aws-0-us-east-1.pooler.supabase.com \
+            --port=5432 \
+            --username=postgres.lztyetmnlkkcjknsdyor \
+            --dbname=postgres \
+            --no-password \
+            --format=plain \
+            > prod-presync-backup-$(date +%Y-%m-%d).sql
+
+      - name: Upload pre-sync prod backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-presync-backup-${{ github.run_number }}-${{ github.run_attempt }}
+          path: prod-presync-backup-*.sql
+          retention-days: 7
+
+      - name: Dump live public-schema data
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          # --schema=public excludes auth.users/auth.identities entirely.
+          # --disable-triggers lets the restore load tables out of FK
+          # dependency order (see the v1-only note at the top of this file
+          # for why public.users' FK to auth.users still resolves in prod).
+          pg_dump \
+            --host=aws-1-us-east-2.pooler.supabase.com \
+            --port=5432 \
+            --username=postgres.rfiukmdsbcofrepnbigi \
+            --dbname=postgres \
+            --no-password \
+            --schema=public \
+            --data-only \
+            --disable-triggers \
+            --format=plain \
+            > live-data-$(date +%Y-%m-%d).sql
+
+      - name: Truncate all public tables in prod
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_PROD_DB_PASSWORD }}
+        run: |
+          psql \
+            --host=aws-0-us-east-1.pooler.supabase.com \
+            --port=5432 \
+            --username=postgres.lztyetmnlkkcjknsdyor \
+            --dbname=postgres \
+            --no-password \
+            -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            r RECORD;
+          BEGIN
+            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+              EXECUTE format('TRUNCATE TABLE public.%I CASCADE', r.tablename);
+            END LOOP;
+          END $$;
+          SQL
+
+      - name: Restore live data into prod
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_PROD_DB_PASSWORD }}
+        run: |
+          psql \
+            --host=aws-0-us-east-1.pooler.supabase.com \
+            --port=5432 \
+            --username=postgres.lztyetmnlkkcjknsdyor \
+            --dbname=postgres \
+            --no-password \
+            -v ON_ERROR_STOP=1 \
+            -f live-data-$(date +%Y-%m-%d).sql
