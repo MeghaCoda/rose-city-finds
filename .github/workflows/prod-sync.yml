@@ -37,7 +37,7 @@ name: Weekly Live-to-Prod Data Sync
 
 on:
   schedule:
-    - cron: '0 10 * * 0' # Sunday 2 AM PST (UTC-8); fires 3 AM in summer (PDT)
+    - cron: '0 11 * * 0' # Sunday 3 AM PST (UTC-8); fires 4 AM in summer (PDT)
   workflow_dispatch:
 
 jobs:
