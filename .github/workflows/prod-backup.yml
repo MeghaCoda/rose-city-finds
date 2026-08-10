@@ -1,0 +1,37 @@
+name: Daily Prod Database Backup
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # 2 AM PST (UTC-8); fires at 3 AM in summer (PDT)
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Run pg_dump
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_PROD_DB_PASSWORD }}
+        run: |
+          pg_dump \
+            --host=aws-0-us-east-1.pooler.supabase.com \
+            --port=5432 \
+            --username=postgres.lztyetmnlkkcjknsdyor \
+            --dbname=postgres \
+            --no-password \
+            --format=plain \
+            > backup-prod-$(date +%Y-%m-%d).sql
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-prod-${{ github.run_number }}-${{ github.run_attempt }}
+          path: backup-prod-*.sql
+          retention-days: 7
