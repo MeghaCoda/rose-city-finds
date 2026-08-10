@@ -38,7 +38,7 @@ export type LocationWithOffersRow = LocationRow & {
 };
 
 export async function fetchLocationsWithOffers(): Promise<LocationWithOffersRow[]> {
-  const supabase = await makeStandardProdClient();
+  const supabase = await makeStandardOrProdClient();
   const { data, error } = await supabase
     .from('locations')
     .select('*, business:businesses(*), location_hours(*), offer_locations(offers(*, offer_hours(*)))');
