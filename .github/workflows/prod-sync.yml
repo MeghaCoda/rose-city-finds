@@ -24,10 +24,10 @@ name: Weekly Live-to-Prod Data Sync
 # in v1 because every created_by/verified_by value in live resolves to that
 # one manually-reconciled UUID. As soon as a second real contributor exists
 # in live, their content's created_by/verified_by will point to a UUID that
-# doesn't exist in prod's auth.users -- with --disable-triggers (needed
-# below so the restore doesn't fail on FK/dependency ordering), that won't
-# error, it will silently leave dangling references in prod. Do not extend
-# this workflow to "just add more reconciled UUIDs" once that happens.
+# doesn't exist in prod's auth.users, and the restore step below will fail
+# outright with a foreign-key violation (loud, not silent -- there is no
+# --disable-triggers here to paper over it; see that step for why). Do not
+# extend this workflow to "just add more reconciled UUIDs" once that happens.
 #
 # PLANNED v2 REPLACEMENT: the direction reverses. Live/sandbox gets seeded
 # FROM a copy of prod (not the other way around) as a safe place to tinker,
@@ -77,10 +77,19 @@ jobs:
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          # --schema=public excludes auth.users/auth.identities entirely.
-          # --disable-triggers lets the restore load tables out of FK
-          # dependency order (see the v1-only note at the top of this file
-          # for why public.users' FK to auth.users still resolves in prod).
+          # --schema=public excludes auth.users/auth.identities entirely
+          # (see the v1-only note at the top of this file for why
+          # public.users' FK to auth.users still resolves in prod).
+          #
+          # Deliberately NOT using --disable-triggers: that flag makes
+          # pg_dump wrap each table's data in `ALTER TABLE ... DISABLE
+          # TRIGGER ALL`, which includes the internal RI_ConstraintTrigger
+          # triggers that enforce foreign keys -- disabling those requires
+          # real Postgres superuser, and the Supabase pooler role here is
+          # not one ("permission denied: ... is a system trigger" on
+          # restore). It's also unnecessary: this schema has no circular
+          # FK dependencies, so pg_dump's default data-only dump already
+          # orders each table's data to satisfy FK constraints on restore.
           pg_dump \
             --host=aws-1-us-east-2.pooler.supabase.com \
             --port=5432 \
@@ -89,7 +98,6 @@ jobs:
             --no-password \
             --schema=public \
             --data-only \
-            --disable-triggers \
             --format=plain \
             > live-data-$(date +%Y-%m-%d).sql
 
